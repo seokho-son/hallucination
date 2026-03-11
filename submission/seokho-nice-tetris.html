@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>👾 CHAOS TETRIS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  :root {
+    --bg: #1a1128;
+    --grid-bg: #140e20;
+    --cyan: #00f5ff;
+    --yellow: #ffe600;
+    --purple: #b44dff;
+    --green: #39ff14;
+    --red: #ff2c55;
+    --blue: #2d7aff;
+    --orange: #ff8800;
+    --pink: #ff6eb4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(180,77,255,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,245,255,0.06) 0%, transparent 50%);
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 6px);
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    animation: fadeIn 0.8s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .game-wrapper {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .side-panel {
+    width: 160px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .panel-box {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  }
+
+  .panel-label {
+    font-size: 8px;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .panel-value {
+    font-size: 18px;
+    color: var(--cyan);
+    text-shadow: 0 0 14px rgba(0,245,255,0.5);
+  }
+  .panel-value.purple { color: var(--purple); text-shadow: 0 0 14px rgba(180,77,255,0.5); }
+  .panel-value.green { color: var(--green); text-shadow: 0 0 14px rgba(57,255,20,0.5); }
+  .panel-value.pink { color: var(--pink); text-shadow: 0 0 14px rgba(255,110,180,0.5); }
+
+  .mood-indicator {
+    font-size: 22px;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .mood-label {
+    font-size: 7px;
+    color: rgba(255,255,255,0.25);
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  #next-canvas { display: block; margin: 4px auto 0; }
+
+  .board-wrap {
+    position: relative;
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow:
+      0 0 60px rgba(180,77,255,0.06),
+      0 0 120px rgba(0,245,255,0.03),
+      inset 0 0 40px rgba(0,0,0,0.4);
+    outline: none;
+  }
+
+  #board-canvas { display: block; background: var(--grid-bg); }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(20,14,32,0.92);
+    backdrop-filter: blur(6px);
+    z-index: 10;
+    cursor: pointer;
+  }
+  .overlay.hidden { display: none; }
+
+  .overlay h1 {
+    font-size: 22px;
+    margin-bottom: 4px;
+    background: linear-gradient(135deg, var(--cyan), var(--purple), var(--pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .overlay h1.red-text {
+    background: linear-gradient(135deg, var(--red), var(--orange));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .overlay .title-emoji { font-size: 40px; margin-bottom: 8px; }
+  .overlay .sub {
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    margin-top: 16px;
+    animation: blink 1.2s step-end infinite;
+  }
+  .overlay .score-text {
+    font-size: 13px;
+    color: var(--yellow);
+    text-shadow: 0 0 10px rgba(255,230,0,0.5);
+    margin-top: 10px;
+  }
+  .overlay .gameover-emoji { font-size: 36px; margin-bottom: 8px; }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .chaos-banner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    font-size: 13px;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255,0,100,0.8), 0 0 40px rgba(255,0,100,0.4);
+    white-space: nowrap;
+    pointer-events: none;
+    animation: chaosBannerIn 0.3s ease, chaosBannerOut 0.4s 1.2s ease forwards;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .chaos-banner .chaos-emoji { font-size: 28px; display: block; margin-bottom: 4px; }
+
+  @keyframes chaosBannerIn {
+    from { transform: translate(-50%,-50%) scale(2.5); opacity: 0; }
+    to { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  }
+  @keyframes chaosBannerOut {
+    to { transform: translate(-50%,-50%) scale(0.8); opacity: 0; }
+  }
+
+  @keyframes screenShake {
+    0%,100% { transform: translate(0,0) rotate(0deg); }
+    10% { transform: translate(-3px, 2px) rotate(-0.5deg); }
+    20% { transform: translate(3px, -2px) rotate(0.5deg); }
+    30% { transform: translate(-2px, 3px) rotate(-0.3deg); }
+    40% { transform: translate(2px, -3px) rotate(0.3deg); }
+    50% { transform: translate(-3px, 1px) rotate(-0.5deg); }
+    60% { transform: translate(3px, 1px) rotate(0.5deg); }
+    70% { transform: translate(-1px, -2px) rotate(-0.2deg); }
+    80% { transform: translate(1px, 2px) rotate(0.2deg); }
+    90% { transform: translate(-2px, -1px) rotate(-0.3deg); }
+  }
+
+  .board-wrap.shaking {
+    animation: screenShake 0.4s ease;
+  }
+
+  .board-wrap.tilted {
+    transition: transform 0.5s ease;
+  }
+
+  .board-wrap.drunk {
+    animation: drunkSway 2s ease-in-out infinite;
+  }
+
+  @keyframes drunkSway {
+    0%,100% { transform: rotate(0deg); }
+    25% { transform: rotate(1.5deg); }
+    75% { transform: rotate(-1.5deg); }
+  }
+
+  .controls {
+    display: none;
+    gap: 6px;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 300px;
+  }
+  .ctrl-row { display: flex; gap: 6px; justify-content: center; }
+  .ctrl-btn {
+    width: 62px; height: 50px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.5);
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    font-family: inherit;
+  }
+  .ctrl-btn:active { background: rgba(255,255,255,0.12); border-color: var(--pink); }
+  .ctrl-btn.wide { width: 130px; font-size: 10px; }
+
+  @media (max-width: 600px) {
+    .game-wrapper { flex-direction: column; align-items: center; gap: 10px; }
+    .side-panel { flex-direction: row; width: auto; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .panel-box { padding: 10px; }
+    .panel-value { font-size: 14px; }
+    .controls { display: flex; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="game-wrapper">
+    <div class="side-panel">
+      <div class="panel-box">
+        <div class="panel-label">Score</div>
+        <div class="panel-value" id="ui-score">0</div>
+      </div>
+      <div class="panel-box">
+        <div class="panel-label">Level</div>
+        <div class="panel-value purple" id="ui-level">1</div>
+      </div>
+      <div class="panel-box">
+        <div class="panel-label">Lines</div>
+        <div class="panel-value green" id="ui-lines">0</div>
+      </div>
+      <div class="panel-box">
+        <div class="panel-label">Mood</div>
+        <div class="mood-indicator" id="ui-mood">😊</div>
+        <div class="mood-label" id="ui-mood-text">행복해요!</div>
+      </div>
+      <div class="panel-box" id="chaos-box" style="border-color:rgba(255,0,100,0.2);">
+        <div class="panel-label">Chaos</div>
+        <div class="mood-indicator" id="ui-chaos">😇</div>
+        <div class="mood-label" id="ui-chaos-text">평화로운 중...</div>
+        <div style="margin-top:6px;height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden;">
+          <div id="chaos-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--yellow),var(--red));border-radius:2px;transition:width 0.3s;"></div>
+        </div>
+      </div>
+      <div class="panel-box">
+        <div class="panel-label">Next</div>
+        <canvas id="next-canvas" width="120" height="110"></canvas>
+      </div>
+    </div>
+
+    <div class="board-wrap" id="board-wrap" tabindex="0">
+      <canvas id="board-canvas"></canvas>
+
+      <div class="overlay" id="overlay-start">
+        <div class="title-emoji">👾🫠🌀</div>
+        <h1>CHAOS TETRIS</h1>
+        <div class="sub">클릭 또는 SPACE로 시작!</div>
+      </div>
+      <div class="overlay hidden" id="overlay-over">
+        <div class="gameover-emoji" id="gameover-emoji">😭</div>
+        <h1 class="red-text">GAME OVER</h1>
+        <div class="score-text" id="final-score"></div>
+        <div class="sub">클릭 또는 SPACE로 재시작</div>
+      </div>
+      <div class="overlay hidden" id="overlay-pause">
+        <div class="title-emoji">😴</div>
+        <h1>PAUSED</h1>
+        <div class="sub">P를 눌러 계속하기</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl-row">
+      <div class="ctrl-btn" data-act="rotate">↻</div>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-btn" data-act="left">◀</div>
+      <div class="ctrl-btn" data-act="down">▼</div>
+      <div class="ctrl-btn" data-act="right">▶</div>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-btn wide" data-act="drop">DROP</div>
+      <div class="ctrl-btn wide" data-act="start">START</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var COLS = 12, ROWS = 20, CELL = 28;
+  var LOCK_DELAY = 500;
+  var SCORE_TABLE = [0, 100, 300, 500, 800, 1200, 1600, 2000, 2500, 3000];
+
+  // ═══ BIZARRE SHAPES ═══
+  // Mix of pentominoes, hexominoes, and weird custom shapes
+  var SHAPES = {
+    // ── 괴상한 뱀 (Snake) ──
+    Snake: { m: [
+      [0,0,0,0,0],
+      [1,1,0,0,0],
+      [0,1,1,0,0],
+      [0,0,1,1,0],
+      [0,0,0,0,0]
+    ], c: '#00f5ff' },
+    // ── 십자가 (Cross / Plus) ──
+    Cross: { m: [
+      [0,1,0],
+      [1,1,1],
+      [0,1,0]
+    ], c: '#ff6eb4' },
+    // ── U자 (U-shape) ──
+    Ushaped: { m: [
+      [1,0,1],
+      [1,1,1],
+      [0,0,0]
+    ], c: '#ffe600' },
+    // ── 번개 (Lightning bolt) ──
+    Bolt: { m: [
+      [1,0,0,0],
+      [1,1,0,0],
+      [0,1,0,0],
+      [0,1,1,0]
+    ], c: '#b44dff' },
+    // ── P자 (P-pentomino) ──
+    Pshape: { m: [
+      [1,1,0],
+      [1,1,0],
+      [1,0,0]
+    ], c: '#39ff14' },
+    // ── 거대 L (Big-L 5칸) ──
+    BigL: { m: [
+      [1,0,0,0,0],
+      [1,0,0,0,0],
+      [1,0,0,0,0],
+      [1,1,1,0,0],
+      [0,0,0,0,0]
+    ], c: '#ff8800' },
+    // ── T왕 (Big-T) ──
+    BigT: { m: [
+      [1,1,1,1,1],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,0,0,0],
+      [0,0,0,0,0]
+    ], c: '#2d7aff' },
+    // ── 점 하나 (Dot) ──
+    Dot: { m: [
+      [1]
+    ], c: '#ffffff' },
+    // ── 대각선 계단 (Stairs) ──
+    Stairs: { m: [
+      [1,0,0,0],
+      [1,1,0,0],
+      [0,1,1,0],
+      [0,0,1,1]
+    ], c: '#ff2c55' },
+    // ── 코너 (Corner / V) ──
+    Corner: { m: [
+      [1,0,0,0],
+      [1,0,0,0],
+      [1,1,1,1]
+    ], c: '#00ff88' },
+    // ── 기본 I (얘는 원래 모양) ──
+    Line: { m: [
+      [0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]
+    ], c: '#00f5ff' },
+    // ── 도넛 (Donut / O with hole) ──
+    Donut: { m: [
+      [1,1,1],
+      [1,0,1],
+      [1,1,1]
+    ], c: '#ff44aa' },
+    // ── W 모양 ──
+    Wshape: { m: [
+      [1,0,0],
+      [1,1,0],
+      [0,1,1]
+    ], c: '#44ddff' },
+    // ── 거대 + (Mega Plus 9칸) ──
+    MegaPlus: { m: [
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [1,1,1,1,1],
+      [0,0,1,0,0],
+      [0,0,1,0,0]
+    ], c: '#ffaa00' },
+    // ── 작은 2칸 (Domino) ──
+    Domino: { m: [
+      [1,1]
+    ], c: '#aaaaff' }
+  };
+  var PIECE_KEYS = Object.keys(SHAPES);
+
+  var boardCanvas = document.getElementById('board-canvas');
+  var bCtx = boardCanvas.getContext('2d');
+  boardCanvas.width = COLS * CELL;
+  boardCanvas.height = ROWS * CELL;
+  var nextCanvas = document.getElementById('next-canvas');
+  var nCtx = nextCanvas.getContext('2d');
+
+  // ─── Emotion system ──────────────────────
+  // Each cell on the board stores: { color, emotion, eyeOffset, blinkTimer }
+  // Emotions: 'happy','chill','sleepy','worried','scared','excited','angry','love'
+  var EMOTIONS = ['happy','chill','sleepy','worried','excited','love'];
+
+  // Mood state based on game progress
+  var moodLevel = 0; // 0=happy, increases with stack height
+  var comboCount = 0;
+  var lastClearTime = 0;
+  var shakeAmount = 0;
+  var globalBlink = 0;
+  var globalBlinkInterval = 0;
+  var celebrateTimer = 0;
+
+  function getStackHeight() {
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        if (board[y] && board[y][x]) return ROWS - y;
+    return 0;
+  }
+
+  function getMoodFromState() {
+    var h = getStackHeight();
+    if (celebrateTimer > 0) return 'celebrate';
+    if (h > 16) return 'panic';
+    if (h > 13) return 'scared';
+    if (h > 10) return 'worried';
+    if (h > 6) return 'neutral';
+    if (comboCount > 1) return 'excited';
+    return 'happy';
+  }
+
+  function updateMoodUI() {
+    var mood = getMoodFromState();
+    var el = document.getElementById('ui-mood');
+    var txt = document.getElementById('ui-mood-text');
+    var map = {
+      'happy':     { e: '😊', t: '행복해요~' },
+      'excited':   { e: '🤩', t: '콤보 신나!!!' },
+      'celebrate': { e: '🥳', t: '라인클리어!!' },
+      'neutral':   { e: '😐', t: '음... 괜찮아' },
+      'worried':   { e: '😰', t: '좀 불안해요...' },
+      'scared':    { e: '😱', t: '으악!! 무서워!!' },
+      'panic':     { e: '🤯', t: '살려주세요!!!' }
+    };
+    var m = map[mood] || map['happy'];
+    el.textContent = m.e;
+    txt.textContent = m.t;
+  }
+
+  // Pick emotion for a new cell based on current mood
+  function pickCellEmotion() {
+    var mood = getMoodFromState();
+    if (mood === 'panic' || mood === 'scared') {
+      return ['worried','scared','worried'][Math.floor(Math.random()*3)];
+    }
+    if (mood === 'worried') {
+      return ['worried','chill','sleepy'][Math.floor(Math.random()*3)];
+    }
+    if (mood === 'celebrate' || mood === 'excited') {
+      return ['excited','love','happy'][Math.floor(Math.random()*3)];
+    }
+    return ['happy','chill','happy','love'][Math.floor(Math.random()*4)];
+  }
+
+  // Draw a face on a cell
+  function drawFace(ctx, cx, cy, size, emotion, time, cellData) {
+    var half = size / 2;
+    var midX = cx + half;
+    var midY = cy + half;
+
+    // Eye positions
+    var eyeL = midX - size * 0.18;
+    var eyeR = midX + size * 0.18;
+    var eyeY = midY - size * 0.06;
+    var mouthY = midY + size * 0.18;
+
+    // Blink logic (shared per cell)
+    var isBlinking = false;
+    if (cellData && cellData.blinkTimer !== undefined) {
+      if (cellData.blinkTimer > 0 && cellData.blinkTimer < 4) isBlinking = true;
+    }
+
+    ctx.save();
+
+    // === EYES ===
+    var eyeSize = size * 0.08;
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+
+    if (emotion === 'happy' || emotion === 'love' || emotion === 'excited') {
+      if (emotion === 'love') {
+        // Heart eyes
+        ctx.fillStyle = '#ff3377';
+        drawHeart(ctx, eyeL, eyeY, size * 0.12);
+        drawHeart(ctx, eyeR, eyeY, size * 0.12);
+      } else if (emotion === 'excited') {
+        // Star eyes
+        ctx.fillStyle = '#ffdd00';
+        drawStar(ctx, eyeL, eyeY, size * 0.1);
+        drawStar(ctx, eyeR, eyeY, size * 0.1);
+      } else {
+        // Normal happy eyes (dots or ^_^)
+        if (isBlinking) {
+          drawLineEye(ctx, eyeL, eyeY, size * 0.08);
+          drawLineEye(ctx, eyeR, eyeY, size * 0.08);
+        } else {
+          ctx.beginPath();
+          ctx.arc(eyeL, eyeY, eyeSize, 0, Math.PI * 2);
+          ctx.arc(eyeR, eyeY, eyeSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } else if (emotion === 'chill') {
+      // Half-closed chill eyes ─ ─
+      drawLineEye(ctx, eyeL, eyeY, size * 0.09);
+      drawLineEye(ctx, eyeR, eyeY, size * 0.09);
+    } else if (emotion === 'sleepy') {
+      // Closed eyes with Zz
+      drawLineEye(ctx, eyeL, eyeY, size * 0.08);
+      drawLineEye(ctx, eyeR, eyeY, size * 0.08);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.font = (size * 0.18) + 'px sans-serif';
+      ctx.fillText('z', midX + size * 0.2, midY - size * 0.18);
+    } else if (emotion === 'worried') {
+      // Big round worried eyes
+      var wEye = size * 0.1;
+      ctx.beginPath();
+      ctx.arc(eyeL, eyeY, wEye, 0, Math.PI * 2);
+      ctx.arc(eyeR, eyeY, wEye, 0, Math.PI * 2);
+      ctx.fill();
+      // Eyebrow worry lines
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(eyeL - size*0.09, eyeY - size*0.16);
+      ctx.lineTo(eyeL + size*0.09, eyeY - size*0.12);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(eyeR + size*0.09, eyeY - size*0.16);
+      ctx.lineTo(eyeR - size*0.09, eyeY - size*0.12);
+      ctx.stroke();
+    } else if (emotion === 'scared') {
+      // Wide O_O eyes
+      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+      ctx.lineWidth = 1.5;
+      var sEye = size * 0.1;
+      ctx.beginPath(); ctx.arc(eyeL, eyeY, sEye, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(eyeR, eyeY, sEye, 0, Math.PI*2); ctx.stroke();
+      // Tiny pupils that shake
+      var px = Math.sin(time * 0.015) * 1.5;
+      ctx.fillStyle = 'rgba(0,0,0,0.9)';
+      ctx.beginPath();
+      ctx.arc(eyeL + px, eyeY, size*0.04, 0, Math.PI*2);
+      ctx.arc(eyeR + px, eyeY, size*0.04, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // === MOUTH ===
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
+
+    if (emotion === 'happy' || emotion === 'love') {
+      // Smile
+      ctx.beginPath();
+      ctx.arc(midX, mouthY - size*0.02, size * 0.12, 0.1 * Math.PI, 0.9 * Math.PI);
+      ctx.stroke();
+    } else if (emotion === 'excited') {
+      // Big open smile
+      ctx.beginPath();
+      ctx.arc(midX, mouthY - size*0.04, size * 0.12, 0, Math.PI);
+      ctx.fill();
+    } else if (emotion === 'chill') {
+      // Small flat smile
+      ctx.beginPath();
+      ctx.moveTo(midX - size*0.08, mouthY);
+      ctx.lineTo(midX + size*0.08, mouthY);
+      ctx.stroke();
+    } else if (emotion === 'sleepy') {
+      // Small O mouth
+      ctx.beginPath();
+      ctx.arc(midX, mouthY, size*0.05, 0, Math.PI*2);
+      ctx.stroke();
+    } else if (emotion === 'worried') {
+      // Wavy worried mouth
+      ctx.beginPath();
+      ctx.moveTo(midX - size*0.1, mouthY);
+      ctx.quadraticCurveTo(midX - size*0.04, mouthY + size*0.06, midX, mouthY);
+      ctx.quadraticCurveTo(midX + size*0.04, mouthY - size*0.06, midX + size*0.1, mouthY);
+      ctx.stroke();
+    } else if (emotion === 'scared') {
+      // Big O mouth
+      ctx.beginPath();
+      ctx.arc(midX, mouthY + size*0.02, size*0.07, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Celebration sparkles
+    if (celebrateTimer > 0 && Math.random() > 0.7) {
+      ctx.fillStyle = 'rgba(255,255,100,0.7)';
+      var sx = midX + (Math.random()-0.5) * size * 0.8;
+      var sy = midY + (Math.random()-0.5) * size * 0.8;
+      drawStar(ctx, sx, sy, size * 0.06);
+    }
+
+    ctx.restore();
+  }
+
+  function drawLineEye(ctx, x, y, w) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - w, y);
+    ctx.lineTo(x + w, y);
+    ctx.stroke();
+  }
+
+  function drawHeart(ctx, x, y, s) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.4);
+    ctx.bezierCurveTo(x - s, y - s * 0.3, x - s * 0.3, y - s, x, y - s * 0.3);
+    ctx.bezierCurveTo(x + s * 0.3, y - s, x + s, y - s * 0.3, x, y + s * 0.4);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStar(ctx, x, y, r) {
+    ctx.save();
+    ctx.beginPath();
+    for (var i = 0; i < 5; i++) {
+      var angle = (i * 4 * Math.PI / 5) - Math.PI / 2;
+      var method = i === 0 ? 'moveTo' : 'lineTo';
+      ctx[method](x + r * Math.cos(angle), y + r * Math.sin(angle));
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ═══════════════════════════════════════════
+  // ═══ CHAOS ENGINE ═══
+  // ═══════════════════════════════════════════
+  var chaosLevel = 0; // 0-100
+  var chaosTimer = 0;
+  var chaosEventTimer = 0;
+  var CHAOS_EVENT_INTERVAL = 6000; // ms between chaos events
+  var activeChaos = []; // list of active chaos effects
+  var reversedControls = false;
+  var invertedGravity = false;
+  var speedMultiplier = 1;
+  var mirrorBoard = false;
+  var invisiblePiece = false;
+  var drunkMode = false;
+  var randomRotateTimer = 0;
+  var teleportCooldown = 0;
+  var freezeTimer = 0;
+  var turboTimer = 0;
+  var confettiParticles = [];
+
+  var CHAOS_EVENTS = [
+    {
+      name: '🔄 반전 조작!',
+      desc: '좌우가 바뀌었다!',
+      emoji: '🔄',
+      apply: function() { reversedControls = true; },
+      remove: function() { reversedControls = false; },
+      duration: 8000
+    },
+    {
+      name: '⚡ 터보 모드!',
+      desc: '미친 속도!!',
+      emoji: '⚡',
+      apply: function() { speedMultiplier = 3; turboTimer = 1; },
+      remove: function() { speedMultiplier = 1; turboTimer = 0; },
+      duration: 5000
+    },
+    {
+      name: '🐌 슬로우 모션',
+      desc: '느려~지는~ 세상~',
+      emoji: '🐌',
+      apply: function() { speedMultiplier = 0.3; },
+      remove: function() { speedMultiplier = 1; },
+      duration: 6000
+    },
+    {
+      name: '👻 투명 블록!',
+      desc: '블록이 안 보여!',
+      emoji: '👻',
+      apply: function() { invisiblePiece = true; },
+      remove: function() { invisiblePiece = false; },
+      duration: 5000
+    },
+    {
+      name: '🍺 취한 보드',
+      desc: '흔들흔들~',
+      emoji: '🍺',
+      apply: function() {
+        drunkMode = true;
+        document.getElementById('board-wrap').classList.add('drunk');
+      },
+      remove: function() {
+        drunkMode = false;
+        document.getElementById('board-wrap').classList.remove('drunk');
+      },
+      duration: 7000
+    },
+    {
+      name: '🌀 랜덤 회전!',
+      desc: '블록이 저절로 돌아!',
+      emoji: '🌀',
+      apply: function() { randomRotateTimer = 800; },
+      remove: function() { randomRotateTimer = 0; },
+      duration: 6000
+    },
+    {
+      name: '🫨 지진 발생!',
+      desc: '보드가 흔들린다!',
+      emoji: '🫨',
+      apply: function() { triggerShake(); shiftBoardRandom(); },
+      remove: function() {},
+      duration: 500
+    },
+    {
+      name: '🪄 텔레포트!',
+      desc: '블록이 순간이동!',
+      emoji: '🪄',
+      apply: function() {
+        if (current) {
+          var newX = Math.floor(Math.random() * (COLS - current.matrix[0].length));
+          if (!collides(current.matrix, newX, current.y)) {
+            current.x = newX;
+          }
+        }
+      },
+      remove: function() {},
+      duration: 300
+    },
+    {
+      name: '🧊 잠깐 멈춰!',
+      desc: '3초간 조작 불가!',
+      emoji: '🧊',
+      apply: function() { freezeTimer = 3000; },
+      remove: function() { freezeTimer = 0; },
+      duration: 3000
+    },
+    {
+      name: '🎲 색상 셔플!',
+      desc: '모든 색이 바뀌었다!',
+      emoji: '🎲',
+      apply: function() { shuffleBoardColors(); },
+      remove: function() {},
+      duration: 300
+    },
+    {
+      name: '⬆️ 중력 반전!',
+      desc: '블록이 위로 간다?!',
+      emoji: '⬆️',
+      apply: function() { invertedGravity = true; },
+      remove: function() { invertedGravity = false; },
+      duration: 5000
+    },
+    {
+      name: '💣 폭탄!',
+      desc: '랜덤 블록 파괴!',
+      emoji: '💣',
+      apply: function() { triggerShake(); explodeRandom(); },
+      remove: function() {},
+      duration: 500
+    },
+    {
+      name: '🪞 거울 모드!',
+      desc: '좌우가 반전!',
+      emoji: '🪞',
+      apply: function() { mirrorBoard = true; },
+      remove: function() { mirrorBoard = false; },
+      duration: 7000
+    }
+  ];
+
+  function triggerShake() {
+    var wrap = document.getElementById('board-wrap');
+    wrap.classList.remove('shaking');
+    void wrap.offsetWidth; // reflow
+    wrap.classList.add('shaking');
+    setTimeout(function(){ wrap.classList.remove('shaking'); }, 400);
+  }
+
+  function showChaosBanner(emoji, name, desc) {
+    // Remove old banners
+    var old = document.querySelectorAll('.chaos-banner');
+    old.forEach(function(el){ el.remove(); });
+    var wrap = document.getElementById('board-wrap');
+    var banner = document.createElement('div');
+    banner.className = 'chaos-banner';
+    banner.innerHTML = '<span class="chaos-emoji">' + emoji + '</span>' + name + '<br><span style="font-size:9px;opacity:0.7;">' + desc + '</span>';
+    wrap.appendChild(banner);
+    setTimeout(function(){ if(banner.parentNode) banner.remove(); }, 2000);
+  }
+
+  function shiftBoardRandom() {
+    // Shift all locked blocks left or right by 1
+    var dir = Math.random() > 0.5 ? 1 : -1;
+    for (var y = 0; y < ROWS; y++) {
+      if (dir === 1) {
+        // Shift right - lose rightmost
+        for (var x = COLS-1; x > 0; x--) board[y][x] = board[y][x-1];
+        board[y][0] = null;
+      } else {
+        // Shift left - lose leftmost
+        for (var x = 0; x < COLS-1; x++) board[y][x] = board[y][x+1];
+        board[y][COLS-1] = null;
+      }
+    }
+  }
+
+  function shuffleBoardColors() {
+    var colors = ['#00f5ff','#ffe600','#b44dff','#39ff14','#ff2c55','#2d7aff','#ff8800','#ff6eb4','#ffffff','#44ddff','#ffaa00','#aaaaff','#00ff88','#ff44aa'];
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        if (board[y][x]) {
+          board[y][x].color = colors[Math.floor(Math.random() * colors.length)];
+        }
+  }
+
+  function explodeRandom() {
+    // Destroy 8-15 random cells
+    var count = 8 + Math.floor(Math.random() * 8);
+    var cells = [];
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        if (board[y][x]) cells.push({x:x, y:y});
+    // Shuffle and destroy
+    for (var i = cells.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random()*(i+1));
+      var t = cells[i]; cells[i] = cells[j]; cells[j] = t;
+    }
+    for (var i = 0; i < Math.min(count, cells.length); i++) {
+      board[cells[i].y][cells[i].x] = null;
+      // Add confetti
+      for (var p = 0; p < 3; p++) {
+        confettiParticles.push({
+          x: cells[i].x * CELL + CELL/2,
+          y: cells[i].y * CELL + CELL/2,
+          vx: (Math.random()-0.5)*6,
+          vy: (Math.random()-0.5)*6 - 3,
+          life: 40,
+          color: ['#ff2c55','#ffe600','#00f5ff','#39ff14','#b44dff'][Math.floor(Math.random()*5)]
+        });
+      }
+    }
+    // Gravity: drop floating blocks
+    applyGravity();
+  }
+
+  function applyGravity() {
+    // Simple gravity: for each column, compact cells downward
+    for (var x = 0; x < COLS; x++) {
+      var stack = [];
+      for (var y = ROWS-1; y >= 0; y--) {
+        if (board[y][x]) { stack.push(board[y][x]); board[y][x] = null; }
+      }
+      for (var i = 0; i < stack.length; i++) {
+        board[ROWS - 1 - i][x] = stack[i];
+      }
+    }
+  }
+
+  function triggerChaosEvent() {
+    var event = CHAOS_EVENTS[Math.floor(Math.random() * CHAOS_EVENTS.length)];
+    event.apply();
+    showChaosBanner(event.emoji, event.name, event.desc);
+
+    if (event.duration > 500) {
+      activeChaos.push({ event: event, remaining: event.duration });
+    }
+
+    // Update chaos UI
+    updateChaosUI();
+
+    // Make blocks react to chaos
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        if (board[y][x]) {
+          var cell = board[y][x];
+          cell.emotion = ['scared','worried','excited'][Math.floor(Math.random()*3)];
+        }
+  }
+
+  function updateChaosEffects(dt) {
+    for (var i = activeChaos.length - 1; i >= 0; i--) {
+      activeChaos[i].remaining -= dt;
+      if (activeChaos[i].remaining <= 0) {
+        activeChaos[i].event.remove();
+        activeChaos.splice(i, 1);
+      }
+    }
+
+    // Freeze timer
+    if (freezeTimer > 0) freezeTimer -= dt;
+
+    // Random rotate
+    if (randomRotateTimer > 0 && current && gameState === 'playing') {
+      randomRotateTimer -= dt;
+      if (randomRotateTimer <= 0) {
+        randomRotateTimer = 600 + Math.random() * 600;
+        tryRotate();
+        // Add one more check - also randomly active
+        if (activeChaos.some(function(c){ return c.event.emoji === '🌀'; })) {
+          randomRotateTimer = 600 + Math.random() * 600;
+        } else {
+          randomRotateTimer = 0;
+        }
+      }
+    }
+
+    // Update confetti
+    for (var i = confettiParticles.length - 1; i >= 0; i--) {
+      var p = confettiParticles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.3;
+      p.life--;
+      if (p.life <= 0) confettiParticles.splice(i, 1);
+    }
+  }
+
+  function updateChaosUI() {
+    var el = document.getElementById('ui-chaos');
+    var txt = document.getElementById('ui-chaos-text');
+    var bar = document.getElementById('chaos-bar');
+
+    if (activeChaos.length === 0) {
+      el.textContent = chaosLevel < 30 ? '😇' : chaosLevel < 60 ? '😈' : '👹';
+      txt.textContent = chaosLevel < 30 ? '평화로운 중...' : chaosLevel < 60 ? '혼돈이 오고 있다' : '완전한 카오스!!';
+    } else {
+      var latest = activeChaos[activeChaos.length - 1];
+      el.textContent = latest.event.emoji;
+      txt.textContent = latest.event.desc;
+    }
+    bar.style.width = Math.min(100, chaosLevel) + '%';
+  }
+
+  function drawConfetti(ctx) {
+    for (var i = 0; i < confettiParticles.length; i++) {
+      var p = confettiParticles[i];
+      ctx.globalAlpha = p.life / 40;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Chaos-aware input actions
+  function chaosAction(intended) {
+    if (freezeTimer > 0) {
+      triggerShake();
+      return; // frozen!
+    }
+
+    if (reversedControls) {
+      if (intended === 'left') intended = 'right';
+      else if (intended === 'right') intended = 'left';
+      else if (intended === 'rotate') intended = 'down';
+      else if (intended === 'down') intended = 'rotate';
+    }
+
+    if (mirrorBoard) {
+      if (intended === 'left') intended = 'right';
+      else if (intended === 'right') intended = 'left';
+    }
+
+    switch(intended) {
+      case 'left': moveLeft(); break;
+      case 'right': moveRight(); break;
+      case 'down': if(softDown()){score+=1;updateUI();} break;
+      case 'rotate': tryRotate(); break;
+      case 'drop': hardDrop(); break;
+    }
+  }
+
+  // ─── State ──────────────────────────────
+  var board, bag, current, next;
+  var score, level, lines;
+  var dropInterval, dropTimer, lockTimer;
+  var gameState;
+  var flashRows, flashTimer;
+  var lastTime = 0;
+  var gameTime = 0;
+
+  function createBoard() {
+    var b = [];
+    for (var i = 0; i < ROWS; i++) {
+      var row = [];
+      for (var j = 0; j < COLS; j++) row.push(null);
+      b.push(row);
+    }
+    return b;
+  }
+
+  function shuffleBag() {
+    var a = PIECE_KEYS.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function nextFromBag() {
+    if (bag.length === 0) bag = shuffleBag();
+    var key = bag.pop();
+    var s = SHAPES[key];
+    var matrix = [];
+    for (var i = 0; i < s.m.length; i++) matrix.push(s.m[i].slice());
+    // Each active cell gets an emotion
+    var emotions = [];
+    for (var y = 0; y < s.m.length; y++) {
+      emotions.push([]);
+      for (var x = 0; x < s.m[y].length; x++) {
+        if (s.m[y][x]) {
+          emotions[y].push({
+            emotion: pickCellEmotion(),
+            blinkTimer: Math.floor(Math.random() * 200)
+          });
+        } else {
+          emotions[y].push(null);
+        }
+      }
+    }
+    return {
+      matrix: matrix,
+      color: s.c,
+      emotions: emotions,
+      x: Math.floor((COLS - s.m[0].length) / 2),
+      y: 0
+    };
+  }
+
+  function rotateMat(piece) {
+    var matrix = piece.matrix;
+    var emo = piece.emotions;
+    var N = matrix.length;
+    var rm = [], re = [];
+    for (var i = 0; i < N; i++) { rm.push([]); re.push([]); for (var j = 0; j < N; j++) { rm[i].push(0); re[i].push(null); } }
+    for (var y = 0; y < N; y++)
+      for (var x = 0; x < N; x++) {
+        rm[x][N-1-y] = matrix[y][x];
+        re[x][N-1-y] = emo[y][x];
+      }
+    return { matrix: rm, emotions: re };
+  }
+
+  function collides(matrix, px, py) {
+    for (var y = 0; y < matrix.length; y++)
+      for (var x = 0; x < matrix[y].length; x++)
+        if (matrix[y][x]) {
+          var bx = px + x, by = py + y;
+          if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+          if (by >= 0 && board[by] && board[by][bx]) return true;
+        }
+    return false;
+  }
+
+  function ghostYPos() {
+    if (!current) return 0;
+    var gy = current.y;
+    while (!collides(current.matrix, current.x, gy + 1)) gy++;
+    return gy;
+  }
+
+  function lockPiece() {
+    if (!current) return;
+    var m = current.matrix;
+    for (var y = 0; y < m.length; y++)
+      for (var x = 0; x < m[y].length; x++)
+        if (m[y][x]) {
+          var by = current.y + y;
+          if (by < 0) { doGameOver(); return; }
+          var emo = current.emotions[y][x];
+          board[by][current.x + x] = {
+            color: current.color,
+            emotion: emo ? emo.emotion : 'happy',
+            blinkTimer: Math.floor(Math.random() * 200)
+          };
+        }
+
+    // When blocks land, nearby blocks react
+    updateLockedEmotions();
+    doClearLines();
+    spawnNext();
+  }
+
+  function updateLockedEmotions() {
+    var h = getStackHeight();
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        if (board[y][x]) {
+          var cell = board[y][x];
+          // Higher stacks = more worried
+          var cellHeight = ROWS - y;
+          if (cellHeight > 16) cell.emotion = 'scared';
+          else if (cellHeight > 13) cell.emotion = ['worried','scared'][Math.floor(Math.random()*2)];
+          else if (cellHeight > 10) cell.emotion = ['worried','chill'][Math.floor(Math.random()*2)];
+          // Bottom blocks that have been there long are sleepy
+          else if (cellHeight <= 3 && Math.random() > 0.5) cell.emotion = 'sleepy';
+        }
+  }
+
+  function spawnNext() {
+    current = next;
+    next = nextFromBag();
+    lockTimer = 0;
+    dropTimer = 0;
+    if (collides(current.matrix, current.x, current.y)) doGameOver();
+    drawNextPreview();
+    updateMoodUI();
+  }
+
+  function doClearLines() {
+    var full = [];
+    for (var y = 0; y < ROWS; y++) {
+      var isFull = true;
+      for (var x = 0; x < COLS; x++) { if (!board[y][x]) { isFull = false; break; } }
+      if (isFull) full.push(y);
+    }
+    if (!full.length) { comboCount = 0; return; }
+
+    // Celebrate! Blocks in the line become excited
+    for (var i = 0; i < full.length; i++) {
+      for (var x = 0; x < COLS; x++) {
+        if (board[full[i]][x]) board[full[i]][x].emotion = 'excited';
+      }
+    }
+
+    flashRows = full.slice();
+    flashTimer = 300;
+    comboCount++;
+    celebrateTimer = 600;
+
+    setTimeout(function() {
+      var sorted = full.slice().sort(function(a,b){ return b-a; });
+      for (var i = 0; i < sorted.length; i++) {
+        board.splice(sorted[i], 1);
+        var emptyRow = [];
+        for (var j = 0; j < COLS; j++) emptyRow.push(null);
+        board.unshift(emptyRow);
+      }
+      flashRows = [];
+      updateLockedEmotions();
+    }, 300);
+
+    lines += full.length;
+    score += (SCORE_TABLE[Math.min(full.length, SCORE_TABLE.length-1)] || 100 * full.length) * level;
+    level = Math.floor(lines / 10) + 1;
+    dropInterval = Math.max(60, 1000 - (level - 1) * 75);
+    updateUI();
+    updateMoodUI();
+  }
+
+  function doGameOver() {
+    gameState = 'over';
+    // All blocks become sad
+    for (var y = 0; y < ROWS; y++)
+      for (var x = 0; x < COLS; x++)
+        if (board[y][x]) board[y][x].emotion = 'worried';
+    document.getElementById('final-score').textContent = 'SCORE: ' + score.toLocaleString();
+    var emojis = ['😭','😢','🥺','💔'];
+    document.getElementById('gameover-emoji').textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    showOverlay('overlay-over');
+  }
+
+  function hardDrop() {
+    if (!current) return;
+    var gy = ghostYPos();
+    score += (gy - current.y) * 2;
+    current.y = gy;
+    // Blocks get excited when dropped
+    for (var y = 0; y < current.emotions.length; y++)
+      for (var x = 0; x < current.emotions[y].length; x++)
+        if (current.emotions[y][x]) current.emotions[y][x].emotion = 'excited';
+    lockPiece();
+    updateUI();
+  }
+
+  function tryRotate() {
+    if (!current) return;
+    var r = rotateMat(current);
+    var kicks = [0, -1, 1, -2, 2, -3, 3];
+    for (var i = 0; i < kicks.length; i++) {
+      if (!collides(r.matrix, current.x + kicks[i], current.y)) {
+        current.matrix = r.matrix;
+        current.emotions = r.emotions;
+        current.x += kicks[i];
+        lockTimer = 0;
+        return;
+      }
+    }
+  }
+
+  function moveLeft() { if (current && !collides(current.matrix, current.x-1, current.y)) { current.x--; lockTimer = 0; } }
+  function moveRight() { if (current && !collides(current.matrix, current.x+1, current.y)) { current.x++; lockTimer = 0; } }
+  function softDown() {
+    if (current && !collides(current.matrix, current.x, current.y+1)) { current.y++; lockTimer = 0; return true; }
+    return false;
+  }
+
+  // ─── Drawing ────────────────────────────
+  function drawCell(ctx, gx, gy, color, alpha, cellSize) {
+    var p = 1;
+    ctx.globalAlpha = alpha;
+    // Main fill with rounded look
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    roundRect(ctx, gx*cellSize+p, gy*cellSize+p, cellSize-p*2, cellSize-p*2, 4);
+    ctx.fill();
+    // Highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(gx*cellSize+p+2, gy*cellSize+p+1, cellSize-p*2-4, 3);
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(gx*cellSize+p+2, gy*cellSize+cellSize-p-3, cellSize-p*2-4, 2);
+    ctx.globalAlpha = 1;
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.moveTo(x+r, y);
+    ctx.lineTo(x+w-r, y);
+    ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r);
+    ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h);
+    ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r);
+    ctx.quadraticCurveTo(x, y, x+r, y);
+  }
+
+  function drawBoard() {
+    bCtx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+
+    // Grid
+    bCtx.strokeStyle = 'rgba(255,255,255,0.025)';
+    bCtx.lineWidth = 1;
+    for (var x = 1; x < COLS; x++) { bCtx.beginPath(); bCtx.moveTo(x*CELL+0.5, 0); bCtx.lineTo(x*CELL+0.5, ROWS*CELL); bCtx.stroke(); }
+    for (var y = 1; y < ROWS; y++) { bCtx.beginPath(); bCtx.moveTo(0, y*CELL+0.5); bCtx.lineTo(COLS*CELL, y*CELL+0.5); bCtx.stroke(); }
+
+    // Locked cells with faces
+    for (var r = 0; r < ROWS; r++)
+      for (var c = 0; c < COLS; c++)
+        if (board[r] && board[r][c]) {
+          var cell = board[r][c];
+          var isFlash = false;
+          if (flashRows) for (var f = 0; f < flashRows.length; f++) { if (flashRows[f] === r) isFlash = true; }
+
+          if (isFlash) {
+            // Flashing line - excited faces
+            drawCell(bCtx, c, r, '#ffffff', 0.9, CELL);
+            drawFace(bCtx, c*CELL, r*CELL, CELL, 'excited', gameTime, cell);
+          } else {
+            drawCell(bCtx, c, r, cell.color, 1, CELL);
+            // Blink timer
+            cell.blinkTimer = (cell.blinkTimer || 0) + 1;
+            if (cell.blinkTimer > 180) cell.blinkTimer = 0;
+            drawFace(bCtx, c*CELL, r*CELL, CELL, cell.emotion, gameTime, cell);
+          }
+        }
+
+    if (gameState !== 'playing' || !current) return;
+
+    var m = current.matrix;
+    // Ghost
+    var gy = ghostYPos();
+    for (var y = 0; y < m.length; y++)
+      for (var x = 0; x < m[y].length; x++)
+        if (m[y][x] && (gy+y) >= 0) {
+          drawCell(bCtx, current.x+x, gy+y, current.color, 0.12, CELL);
+        }
+
+    // Active piece with faces
+    var pieceAlpha = invisiblePiece ? 0.08 : 1;
+    for (var y = 0; y < m.length; y++)
+      for (var x = 0; x < m[y].length; x++)
+        if (m[y][x] && (current.y+y) >= 0) {
+          drawCell(bCtx, current.x+x, current.y+y, current.color, pieceAlpha, CELL);
+          if (!invisiblePiece) {
+            var emo = current.emotions[y][x];
+            if (emo) {
+              emo.blinkTimer = (emo.blinkTimer || 0) + 1;
+              if (emo.blinkTimer > 160) emo.blinkTimer = 0;
+              drawFace(bCtx, (current.x+x)*CELL, (current.y+y)*CELL, CELL, emo.emotion, gameTime, emo);
+            }
+          }
+        }
+  }
+
+  function drawNextPreview() {
+    nCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+    if (!next) return;
+    var m = next.matrix;
+    // Adaptive cell size based on shape dimensions
+    var maxDim = Math.max(m.length, m[0].length);
+    var sz = Math.min(20, Math.floor(Math.min(nextCanvas.width, nextCanvas.height) / (maxDim + 1)));
+    var ox = Math.floor((nextCanvas.width - m[0].length * sz) / 2);
+    var oy = Math.floor((nextCanvas.height - m.length * sz) / 2);
+    for (var y = 0; y < m.length; y++)
+      for (var x = 0; x < m[y].length; x++)
+        if (m[y][x]) {
+          var px = ox + x * sz, py = oy + y * sz;
+          nCtx.fillStyle = next.color;
+          nCtx.beginPath();
+          roundRect(nCtx, px+1, py+1, sz-2, sz-2, 3);
+          nCtx.fill();
+          nCtx.fillStyle = 'rgba(255,255,255,0.15)';
+          nCtx.fillRect(px+3, py+2, sz-6, 2);
+          // Mini face on preview
+          var emo = next.emotions[y][x];
+          if (emo) drawFace(nCtx, px, py, sz, emo.emotion, gameTime, emo);
+        }
+  }
+
+  function updateUI() {
+    document.getElementById('ui-score').textContent = score.toLocaleString();
+    document.getElementById('ui-level').textContent = level;
+    document.getElementById('ui-lines').textContent = lines;
+  }
+
+  function showOverlay(id) {
+    var ids = ['overlay-start','overlay-over','overlay-pause'];
+    for (var i = 0; i < ids.length; i++) {
+      var el = document.getElementById(ids[i]);
+      if (ids[i] === id) el.classList.remove('hidden'); else el.classList.add('hidden');
+    }
+  }
+  function hideAllOverlays() {
+    var ids = ['overlay-start','overlay-over','overlay-pause'];
+    for (var i = 0; i < ids.length; i++) document.getElementById(ids[i]).classList.add('hidden');
+  }
+
+  function startGame() {
+    board = createBoard();
+    bag = [];
+    score = 0; level = 1; lines = 0;
+    dropInterval = 1000; dropTimer = 0; lockTimer = 0;
+    flashRows = []; flashTimer = 0;
+    comboCount = 0; celebrateTimer = 0;
+    // Reset chaos
+    chaosLevel = 0; chaosTimer = 0; chaosEventTimer = 0;
+    activeChaos = []; reversedControls = false; invertedGravity = false;
+    speedMultiplier = 1; mirrorBoard = false; invisiblePiece = false;
+    drunkMode = false; randomRotateTimer = 0; freezeTimer = 0;
+    turboTimer = 0; confettiParticles = [];
+    document.getElementById('board-wrap').classList.remove('drunk','shaking');
+    document.getElementById('board-wrap').style.transform = '';
+
+    current = nextFromBag();
+    next = nextFromBag();
+    gameState = 'playing';
+    hideAllOverlays();
+    updateUI();
+    updateMoodUI();
+    updateChaosUI();
+    drawNextPreview();
+  }
+
+  function togglePause() {
+    if (gameState === 'playing') { gameState = 'paused'; showOverlay('overlay-pause'); }
+    else if (gameState === 'paused') { gameState = 'playing'; hideAllOverlays(); }
+  }
+
+  // ─── Input ──────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    var key = e.code || e.key;
+    if (key === 'Space' || key === 'Enter' || key === ' ') {
+      e.preventDefault();
+      if (gameState === 'start' || gameState === 'over') { startGame(); return; }
+      if (gameState === 'playing') { chaosAction('drop'); return; }
+    }
+    if (key === 'KeyP' || key === 'p') { e.preventDefault(); if (gameState==='playing'||gameState==='paused') togglePause(); return; }
+    if (gameState !== 'playing') return;
+    switch(key) {
+      case 'ArrowLeft': case 'KeyA': case 'a': e.preventDefault(); chaosAction('left'); break;
+      case 'ArrowRight': case 'KeyD': case 'd': e.preventDefault(); chaosAction('right'); break;
+      case 'ArrowDown': case 'KeyS': case 's': e.preventDefault(); chaosAction('down'); break;
+      case 'ArrowUp': case 'KeyW': case 'w': e.preventDefault(); chaosAction('rotate'); break;
+    }
+  });
+
+  document.getElementById('overlay-start').addEventListener('click', function(e){ e.stopPropagation(); startGame(); });
+  document.getElementById('overlay-over').addEventListener('click', function(e){ e.stopPropagation(); startGame(); });
+
+  document.querySelectorAll('.ctrl-btn').forEach(function(btn) {
+    function handle(e) {
+      e.preventDefault(); e.stopPropagation();
+      var act = btn.getAttribute('data-act');
+      if (act==='start') { if(gameState==='start'||gameState==='over') startGame(); else if(gameState==='playing') chaosAction('drop'); return; }
+      if (gameState !== 'playing') return;
+      chaosAction(act);
+    }
+    btn.addEventListener('touchstart', handle, {passive:false});
+    btn.addEventListener('mousedown', handle);
+  });
+
+  // ─── Loop ───────────────────────────────
+  function loop(time) {
+    if (lastTime === 0) lastTime = time;
+    var dt = Math.min(time - lastTime, 100);
+    lastTime = time;
+    gameTime = time;
+
+    if (celebrateTimer > 0) celebrateTimer -= dt;
+    if (flashTimer > 0) flashTimer -= dt;
+
+    if (gameState === 'playing' && current) {
+      // Chaos event timer
+      chaosTimer += dt;
+      chaosLevel = Math.min(100, chaosLevel + dt * 0.003); // chaos builds over time
+      chaosEventTimer += dt;
+
+      // Trigger chaos events with increasing frequency
+      var eventThreshold = Math.max(2000, CHAOS_EVENT_INTERVAL - chaosLevel * 30);
+      if (chaosEventTimer >= eventThreshold) {
+        chaosEventTimer = 0;
+        triggerChaosEvent();
+      }
+
+      // Update active chaos effects
+      updateChaosEffects(dt);
+
+      // Apply speed multiplier to drop
+      var effectiveDrop = dropInterval / speedMultiplier;
+      dropTimer += dt;
+      if (dropTimer >= effectiveDrop) {
+        dropTimer -= effectiveDrop;
+        if (invertedGravity) {
+          // Move up instead of down!
+          if (current && !collides(current.matrix, current.x, current.y - 1) && current.y > 0) {
+            current.y--;
+          }
+        } else {
+          softDown();
+        }
+      }
+
+      if (!invertedGravity) {
+        if (collides(current.matrix, current.x, current.y + 1)) {
+          lockTimer += dt;
+          if (lockTimer >= LOCK_DELAY) lockPiece();
+        } else {
+          lockTimer = 0;
+        }
+      } else {
+        // Inverted: lock when can't move up
+        if (current.y <= 0 || collides(current.matrix, current.x, current.y - 1)) {
+          lockTimer += dt;
+          if (lockTimer >= LOCK_DELAY) lockPiece();
+        } else {
+          lockTimer = 0;
+        }
+      }
+
+      // Update mood & chaos UI periodically
+      if (Math.floor(time / 500) !== Math.floor((time - dt) / 500)) {
+        updateMoodUI();
+        updateChaosUI();
+      }
+    }
+
+    drawBoard();
+
+    // Draw confetti on top
+    if (confettiParticles.length > 0) drawConfetti(bCtx);
+
+    requestAnimationFrame(loop);
+  }
+
+  // Init
+  board = createBoard();
+  bag = [];
+  current = null; next = null;
+  score = 0; level = 1; lines = 0;
+  dropInterval = 1000; dropTimer = 0; lockTimer = 0;
+  gameState = 'start';
+  flashRows = []; flashTimer = 0;
+  comboCount = 0; celebrateTimer = 0;
+
+  drawBoard();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
