@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>에얼리언메이커</title>
+  <style>
+    :root {
+      --bg1: #0f1021;
+      --bg2: #1d2146;
+      --panel: rgba(19, 21, 44, 0.96);
+      --panel-strong: rgba(29, 33, 66, 0.98);
+      --line: rgba(149, 170, 255, 0.22);
+      --text: #f6f7ff;
+      --muted: #b8c0ff;
+      --accent: #6cf6ff;
+      --accent2: #ff97ef;
+      --good: #9dff9c;
+      --warn: #ffd46e;
+      --bad: #ff9d9d;
+      --pixel-shadow: 0 0 0 2px rgba(0,0,0,0.28), 0 12px 0 rgba(0,0,0,0.18);
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Press Start 2P", "DungGeunMo", "Apple SD Gothic Neo", monospace, sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, #1d2250 0 18%, #121533 18% 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+      image-rendering: pixelated;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+        radial-gradient(circle at 15% 20%, rgba(108, 246, 255, 0.16), transparent 20%),
+        radial-gradient(circle at 82% 16%, rgba(255, 151, 239, 0.14), transparent 16%);
+      background-size: 8px 8px, 8px 8px, auto, auto;
+      opacity: 0.95;
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 10% 16%, #ffffff 0 1px, transparent 1px),
+        radial-gradient(circle at 24% 42%, #6cf6ff 0 1px, transparent 1px),
+        radial-gradient(circle at 72% 25%, #ffffff 0 1px, transparent 1px),
+        radial-gradient(circle at 86% 72%, #ff97ef 0 1px, transparent 1px),
+        radial-gradient(circle at 42% 76%, #ffffff 0 1px, transparent 1px);
+      background-size: 160px 160px;
+      animation: pixelStars 12s linear infinite;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      width: min(1240px, calc(100% - 22px));
+      margin: 12px auto;
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 14px;
+    }
+
+    .panel,
+    .subpanel,
+    .mini-card,
+    .stat-box,
+    button,
+    .floating-card,
+    .ending-card,
+    .audio-toggle,
+    .action-progress {
+      border-radius: 0;
+      box-shadow: var(--pixel-shadow);
+      position: relative;
+    }
+
+    .panel::after,
+    .subpanel::after,
+    .mini-card::after,
+    .stat-box::after,
+    button::after,
+    .ending-card::after,
+    .audio-toggle::after,
+    .action-progress::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 2px solid rgba(255,255,255,0.08);
+      pointer-events: none;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 3px solid #2a3166;
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 16px;
+      min-height: 760px;
+      position: relative;
+    }
+
+    .hero-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(18px, 2.6vw, 28px);
+      letter-spacing: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      line-height: 1.35;
+      text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 11px;
+    }
+
+    .glow-badge {
+      padding: 10px 12px;
+      background: #21306b;
+      border: 3px solid #6cf6ff;
+      color: var(--accent);
+      font-size: 10px;
+      animation: pixelGlow 1.4s steps(2) infinite;
+      white-space: nowrap;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 480px;
+      border: 3px solid #33407a;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, #2c3370 0 56%, #171a37 56% 100%);
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, transparent 0 76%, rgba(255,255,255,0.04) 76% 80%, transparent 80% 100%),
+        repeating-linear-gradient(90deg, transparent 0 20px, rgba(255,255,255,0.02) 20px 24px);
+      pointer-events: none;
+    }
+
+    .planet,
+    .spark,
+    .floating-card,
+    .activity-banner,
+    .action-progress,
+    .stage-icon,
+    .pixel-cloud {
+      position: absolute;
+    }
+
+    .planet {
+      width: 160px;
+      height: 160px;
+      right: 30px;
+      top: 26px;
+      background:
+        linear-gradient(180deg, #89fbff 0 20%, #5f8fff 20% 40%, #8f6fff 40% 70%, #39467a 70% 100%);
+      clip-path: polygon(10% 0, 85% 0, 100% 16%, 100% 85%, 85% 100%, 12% 100%, 0 84%, 0 15%);
+      box-shadow: 0 0 0 4px rgba(0,0,0,0.22), 0 0 0 8px rgba(255,255,255,0.03);
+      animation: pixelFloat 2.4s steps(4) infinite;
+    }
+
+    .planet::after {
+      content: "";
+      position: absolute;
+      left: -14px;
+      right: -14px;
+      top: 50%;
+      height: 18px;
+      transform: translateY(-50%);
+      border-top: 4px solid rgba(255,255,255,0.55);
+      border-bottom: 4px solid rgba(255,151,239,0.5);
+      background: rgba(255,255,255,0.08);
+    }
+
+    .pixel-cloud {
+      width: 58px;
+      height: 18px;
+      background: #7ce7ff;
+      top: 38px;
+      left: 32px;
+      box-shadow: 18px 0 0 #7ce7ff, 9px -9px 0 #7ce7ff, 9px 9px 0 #7ce7ff;
+      animation: cloudMove 7s linear infinite;
+      opacity: 0.7;
+    }
+
+    .spark {
+      width: 10px;
+      height: 10px;
+      background: #ffffff;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.12);
+      animation: sparkle 1.2s steps(2) infinite;
+    }
+
+    .spark.s1 { left: 12%; top: 14%; }
+    .spark.s2 { left: 24%; top: 28%; animation-delay: .2s; }
+    .spark.s3 { left: 74%; top: 18%; animation-delay: .5s; }
+    .spark.s4 { left: 84%; top: 40%; animation-delay: .8s; }
+    .spark.s5 { left: 18%; top: 62%; animation-delay: .3s; }
+    .spark.s6 { left: 70%; top: 70%; animation-delay: .7s; }
+
+    .floating-card {
+      min-width: 116px;
+      padding: 10px;
+      background: #1f2958;
+      border: 3px solid #4658a8;
+      font-size: 10px;
+      line-height: 1.6;
+      animation: miniBob 1.8s steps(3) infinite;
+    }
+
+    .floating-card strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 6px;
+      font-size: 10px;
+    }
+
+    .floating-card span {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .fc1 { top: 30px; left: 18px; }
+    .fc2 { top: 124px; right: 18px; animation-delay: .6s; }
+    .fc3 { bottom: 32px; left: 24px; animation-delay: .9s; }
+
+    .activity-banner {
+      left: 50%;
+      top: 16px;
+      transform: translateX(-50%);
+      padding: 10px 16px;
+      background: #10162f;
+      border: 3px solid #ffde68;
+      color: #ffde68;
+      font-size: 10px;
+      display: none;
+      z-index: 4;
+      animation: blinkBanner .7s steps(2) infinite;
+    }
+
+    .activity-banner.show {
+      display: block;
+    }
+
+    .action-progress {
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: min(400px, calc(100% - 30px));
+      background: #11152d;
+      border: 3px solid #4452a5;
+      padding: 8px;
+      display: none;
+      z-index: 4;
+    }
+
+    .action-progress.show {
+      display: block;
+    }
+
+    .action-progress .label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .progress-bar {
+      height: 18px;
+      background: #252c58;
+      border: 3px solid #39488f;
+      padding: 2px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: repeating-linear-gradient(90deg, #6cf6ff 0 10px, #ff97ef 10px 20px);
+      transition: width 0.12s linear;
+    }
+
+    .stage-icon {
+      width: 24px;
+      height: 24px;
+      opacity: 0;
+      z-index: 3;
+      font-size: 20px;
+      filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.3));
+      pointer-events: none;
+    }
+
+    .stage-icon.show {
+      opacity: 1;
+    }
+
+    .alien {
+      position: absolute;
+      left: 50%;
+      bottom: 46px;
+      transform: translateX(-50%);
+      width: 248px;
+      height: 300px;
+      filter: drop-shadow(0 14px 0 rgba(0,0,0,0.26));
+      animation: idleFloat 1.8s steps(4) infinite;
+      z-index: 2;
+    }
+
+    .alien.anim-study { animation: studyAnim .9s steps(3) infinite; }
+    .alien.anim-train { animation: trainAnim .7s steps(3) infinite; }
+    .alien.anim-art { animation: artAnim 1s steps(3) infinite; }
+    .alien.anim-social { animation: socialAnim .85s steps(3) infinite; }
+    .alien.anim-explore { animation: exploreAnim .9s steps(4) infinite; }
+    .alien.anim-rest { animation: restAnim 1.4s steps(2) infinite; }
+
+    .alien .shadow {
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 160px;
+      height: 20px;
+      background: rgba(0,0,0,0.34);
+      clip-path: polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%);
+      animation: shadowAnim 1.8s steps(4) infinite;
+    }
+
+    .head,
+    .body,
+    .arm,
+    .leg,
+    .eye,
+    .mouth,
+    .antenna-tip,
+    .antenna-tip2,
+    .belly-core,
+    .head::before,
+    .head::after {
+      image-rendering: pixelated;
+    }
+
+    .head {
+      position: absolute;
+      left: 50%;
+      top: 18px;
+      transform: translateX(-50%);
+      width: 146px;
+      height: 132px;
+      background: linear-gradient(180deg, var(--skin-top), var(--skin-bottom));
+      clip-path: polygon(14% 0, 86% 0, 100% 18%, 100% 82%, 82% 100%, 18% 100%, 0 82%, 0 18%);
+      box-shadow: 0 0 0 4px rgba(0,0,0,0.2);
+    }
+
+    .head::before,
+    .head::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 50px;
+      top: -42px;
+      background: linear-gradient(180deg, #ffffff, rgba(255,255,255,0.15));
+    }
+
+    .head::before { left: 34px; }
+    .head::after { right: 34px; }
+
+    .antenna-tip,
+    .antenna-tip2 {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: -52px;
+      background: var(--accent2);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.16);
+      animation: tipBlink .9s steps(2) infinite;
+    }
+
+    .antenna-tip { left: 29px; }
+    .antenna-tip2 { right: 29px; animation-delay: .4s; }
+
+    .eye {
+      position: absolute;
+      top: 46px;
+      width: 34px;
+      height: 44px;
+      background: linear-gradient(180deg, #ffffff 0 12%, var(--eye-color) 12% 72%, #0d122a 72% 100%);
+      box-shadow: 0 0 0 4px rgba(0,0,0,0.15);
+      overflow: hidden;
+      animation: blink 3.2s steps(2) infinite;
+    }
+
+    .eye.left { left: 24px; }
+    .eye.right { right: 24px; }
+
+    .eye::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      left: 7px;
+      top: 8px;
+      background: rgba(255,255,255,0.95);
+    }
+
+    .mouth {
+      position: absolute;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%);
+      width: 42px;
+      height: 12px;
+      background: rgba(23,18,45,0.8);
+      clip-path: polygon(0 0, 100% 0, 84% 100%, 16% 100%);
+      transition: all 0.2s steps(2);
+    }
+
+    .body {
+      position: absolute;
+      left: 50%;
+      top: 144px;
+      transform: translateX(-50%);
+      width: 132px;
+      height: 112px;
+      background: linear-gradient(180deg, var(--suit-top), var(--suit-bottom));
+      clip-path: polygon(14% 0, 86% 0, 100% 22%, 92% 100%, 8% 100%, 0 22%);
+      box-shadow: 0 0 0 4px rgba(0,0,0,0.2);
+    }
+
+    .belly-core {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      left: 50%;
+      top: 32px;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, #ffffff 0 16%, #6cf6ff 16% 54%, rgba(108,246,255,0.12) 54% 100%);
+      animation: corePulse .9s steps(2) infinite;
+    }
+
+    .arm,
+    .leg {
+      position: absolute;
+      background: linear-gradient(180deg, var(--skin-top), var(--skin-bottom));
+      box-shadow: 0 0 0 4px rgba(0,0,0,0.18);
+    }
+
+    .arm {
+      width: 24px;
+      height: 92px;
+      top: 150px;
+    }
+
+    .arm.left { left: 38px; }
+    .arm.right { right: 38px; }
+
+    .leg {
+      width: 26px;
+      height: 86px;
+      bottom: 18px;
+    }
+
+    .leg.left { left: 84px; }
+    .leg.right { right: 84px; }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stat-box {
+      background: #1d2450;
+      border: 3px solid #4050a0;
+      padding: 12px;
+      transition: transform 0.14s steps(2);
+    }
+
+    .stat-box:hover {
+      transform: translate(-2px, -2px);
+    }
+
+    .stat-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 9px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+
+    .bar {
+      height: 18px;
+      background: #2b356e;
+      border: 3px solid #4255ac;
+      padding: 2px;
+    }
+
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: repeating-linear-gradient(90deg, var(--accent) 0 10px, var(--accent2) 10px 20px);
+      transition: width 0.45s steps(10);
+    }
+
+    .sidebar {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 760px;
+    }
+
+    .subpanel {
+      background: var(--panel-strong);
+      border: 3px solid #344182;
+      padding: 14px;
+    }
+
+    .subpanel h2,
+    .subpanel h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .topline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .mini-card {
+      padding: 12px 8px;
+      background: #20285a;
+      border: 3px solid #4658a8;
+      text-align: center;
+    }
+
+    .mini-card .label {
+      display: block;
+      font-size: 8px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.6;
+    }
+
+    .mini-card .value {
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .mood {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mood-chip {
+      padding: 10px 12px;
+      background: #1d3761;
+      border: 3px solid #6cf6ff;
+      color: var(--accent);
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .audio-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .audio-toggle {
+      flex: 1;
+      padding: 12px 10px;
+      border: 3px solid #586bbf;
+      background: linear-gradient(180deg, #2d3978, #1f2858);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 9px;
+      line-height: 1.6;
+      text-align: center;
+      transition: transform 0.15s steps(2), filter 0.15s steps(2);
+    }
+
+    .audio-toggle.on {
+      border-color: #8dff98;
+      color: #c6ffcb;
+      filter: brightness(1.08);
+    }
+
+    .audio-toggle:hover,
+    button.action:hover,
+    .footer-actions button:hover {
+      transform: translate(-2px, -2px);
+      filter: brightness(1.06);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    button.action {
+      appearance: none;
+      border: 3px solid #586bbf;
+      background: linear-gradient(180deg, #314184, #212a5f);
+      color: var(--text);
+      padding: 14px 12px;
+      cursor: pointer;
+      font-size: 10px;
+      text-align: left;
+      line-height: 1.7;
+      transition: transform 0.15s steps(2), filter 0.15s steps(2), opacity .2s ease;
+      overflow: hidden;
+    }
+
+    button.action small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 8px;
+      line-height: 1.6;
+    }
+
+    button.action:disabled {
+      opacity: 0.45;
+      cursor: wait;
+      transform: none;
+      filter: none;
+    }
+
+    .event-box {
+      min-height: 126px;
+      line-height: 1.9;
+      color: var(--text);
+      font-size: 10px;
+    }
+
+    .event-box .highlight {
+      color: #ffde68;
+    }
+
+    .logs {
+      max-height: 198px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .log {
+      font-size: 9px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: #1b234f;
+      border: 3px solid #4050a0;
+      color: #edf1ff;
+      line-height: 1.8;
+      animation: slideIn .25s steps(3);
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .footer-actions button {
+      flex: 1;
+      padding: 14px 10px;
+      border: 3px solid #6a7bd0;
+      background: linear-gradient(180deg, #3e4e9a, #28336a);
+      color: var(--text);
+      font-size: 10px;
+      cursor: pointer;
+      line-height: 1.6;
+      transition: transform 0.15s steps(2), filter 0.15s steps(2);
+    }
+
+    .ending-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(5, 7, 19, 0.76);
+      z-index: 10;
+      padding: 16px;
+    }
+
+    .ending-overlay.show {
+      display: grid;
+      animation: overlayIn .3s steps(4);
+    }
+
+    .ending-card {
+      width: min(720px, 100%);
+      background: #191f45;
+      border: 4px solid #6cf6ff;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .ending-title {
+      font-size: clamp(16px, 2.4vw, 26px);
+      margin-bottom: 14px;
+      color: var(--accent);
+      line-height: 1.6;
+    }
+
+    .ending-text {
+      color: #eef4ff;
+      line-height: 2;
+      white-space: pre-line;
+      margin-bottom: 18px;
+      font-size: 10px;
+    }
+
+    .particle-burst {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9;
+      overflow: hidden;
+    }
+
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #ffffff;
+      animation: burst 800ms steps(4) forwards;
+    }
+
+    .stage-effect {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0;
+    }
+
+    .stage-effect.show {
+      opacity: 1;
+    }
+
+    .stage-effect.study {
+      background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(108,246,255,0.18) 18px 26px);
+      animation: effectStudy .6s steps(4) infinite;
+    }
+
+    .stage-effect.train {
+      background: repeating-linear-gradient(90deg, transparent 0 16px, rgba(255,212,110,0.18) 16px 24px);
+      animation: effectTrain .35s steps(3) infinite;
+    }
+
+    .stage-effect.art {
+      background: linear-gradient(90deg, rgba(255,151,239,0.12), transparent, rgba(108,246,255,0.12));
+      animation: effectArt .8s steps(4) infinite;
+    }
+
+    .stage-effect.social {
+      background: repeating-radial-gradient(circle at center, rgba(255,255,255,0.1) 0 8px, transparent 8px 22px);
+      animation: effectSocial .8s steps(4) infinite;
+    }
+
+    .stage-effect.explore {
+      background: repeating-linear-gradient(135deg, transparent 0 22px, rgba(255,255,255,0.08) 22px 28px);
+      animation: effectExplore .5s steps(3) infinite;
+    }
+
+    .stage-effect.rest {
+      background: linear-gradient(180deg, rgba(157,255,156,0.12), rgba(108,246,255,0.06));
+      animation: effectRest 1.2s steps(3) infinite;
+    }
+
+    .shake { animation: shake .45s steps(4); }
+    .celebrate { animation: celebrate .6s steps(4); }
+
+    @keyframes pixelStars { from { transform: translateY(0); } to { transform: translateY(32px); } }
+    @keyframes pixelGlow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.28); } }
+    @keyframes pixelFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+    @keyframes cloudMove { from { transform: translateX(0); } to { transform: translateX(32px); } }
+    @keyframes sparkle { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+    @keyframes miniBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes idleFloat { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-6px); } }
+    @keyframes shadowAnim { 0%,100% { transform: translateX(-50%) scaleX(1); } 50% { transform: translateX(-50%) scaleX(.92); } }
+    @keyframes tipBlink { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.55); } }
+    @keyframes blink { 0%,46%,50%,100% { transform: scaleY(1); } 48% { transform: scaleY(0.08); } }
+    @keyframes corePulse { 0%,100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.08); } }
+    @keyframes slideIn { from { transform: translateY(6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes burst { from { transform: translate(0,0) scale(1); opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(.3); opacity: 0; } }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-4px); } }
+    @keyframes celebrate { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-16px); } }
+    @keyframes blinkBanner { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
+    @keyframes studyAnim { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-48%) translateY(-6px); } }
+    @keyframes trainAnim { 0%,100% { transform: translateX(-50%) translateY(0); } 25% { transform: translateX(-54%) translateY(-2px); } 50% { transform: translateX(-46%) translateY(-2px); } 75% { transform: translateX(-52%) translateY(2px); } }
+    @keyframes artAnim { 0%,100% { transform: translateX(-50%) translateY(0) rotate(0deg); } 50% { transform: translateX(-50%) translateY(-8px) rotate(2deg); } }
+    @keyframes socialAnim { 0%,100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-5px) scaleX(1.04); } }
+    @keyframes exploreAnim { 0%,100% { transform: translateX(-50%) translateY(0); } 25% { transform: translateX(-57%) translateY(-4px); } 50% { transform: translateX(-43%) translateY(-4px); } 75% { transform: translateX(-50%) translateY(-8px); } }
+    @keyframes restAnim { 0%,100% { transform: translateX(-50%) translateY(0) scaleY(1); } 50% { transform: translateX(-50%) translateY(3px) scaleY(.96); } }
+    @keyframes effectStudy { from { background-position: 0 0; } to { background-position: 28px 0; } }
+    @keyframes effectTrain { from { transform: translateX(0); } to { transform: translateX(18px); } }
+    @keyframes effectArt { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+    @keyframes effectSocial { from { transform: scale(1); } to { transform: scale(1.04); } }
+    @keyframes effectExplore { from { background-position: 0 0; } to { background-position: 24px 0; } }
+    @keyframes effectRest { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+
+    @media (max-width: 980px) {
+      .wrap { grid-template-columns: 1fr; }
+      .hero, .sidebar { min-height: auto; }
+    }
+
+    @media (max-width: 680px) {
+      .hero-header { flex-direction: column; }
+      .actions, .topline, .status-grid { grid-template-columns: 1fr; }
+      .audio-row, .footer-actions { flex-direction: column; }
+      .stage { min-height: 430px; }
+      .alien { transform: translateX(-50%) scale(.86); }
+      .activity-banner { width: calc(100% - 20px); text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="particle-burst" id="particleBurst"></div>
+
+  <div class="wrap">
+    <section class="panel hero">
+      <div class="hero-header">
+        <div>
+          <h1>👾 에얼리언메이커</h1>
+          <p class="subtitle">작은 외계 생명체를 12주 동안 성장시키는 픽셀풍 육성 게임입니다. 이번 주 활동을 고르면 실제로 잠깐 행동 애니메이션이 재생된 뒤 다음 주로 넘어갑니다.</p>
+        </div>
+        <div class="glow-badge" id="endingHint">12주 육성 프로젝트</div>
+      </div>
+
+      <div class="stage" id="stage">
+        <div class="planet"></div>
+        <div class="pixel-cloud"></div>
+        <div class="spark s1"></div>
+        <div class="spark s2"></div>
+        <div class="spark s3"></div>
+        <div class="spark s4"></div>
+        <div class="spark s5"></div>
+        <div class="spark s6"></div>
+
+        <div class="floating-card fc1"><strong>별빛 교실</strong><span>지능과 감수성을 키워요</span></div>
+        <div class="floating-card fc2"><strong>중력 체육관</strong><span>체력과 전투 감각을 키워요</span></div>
+        <div class="floating-card fc3"><strong>은하 광장</strong><span>매력과 사회성을 키워요</span></div>
+
+        <div class="activity-banner" id="activityBanner">활동 진행 중</div>
+        <div class="stage-effect" id="stageEffect"></div>
+        <div class="stage-icon" id="stageIcon">✨</div>
+
+        <div class="alien" id="alien">
+          <div class="head" id="head">
+            <div class="antenna-tip"></div>
+            <div class="antenna-tip2"></div>
+            <div class="eye left"></div>
+            <div class="eye right"></div>
+            <div class="mouth" id="mouth"></div>
+          </div>
+          <div class="arm left"></div>
+          <div class="arm right"></div>
+          <div class="body" id="body">
+            <div class="belly-core"></div>
+          </div>
+          <div class="leg left"></div>
+          <div class="leg right"></div>
+          <div class="shadow"></div>
+        </div>
+
+        <div class="action-progress" id="actionProgress">
+          <div class="label">
+            <span id="actionProgressLabel">활동 준비 중</span>
+            <span id="actionProgressValue">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+      </div>
+
+      <div class="status-grid" id="statusGrid"></div>
+    </section>
+
+    <aside class="panel sidebar">
+      <div class="subpanel">
+        <div class="topline">
+          <div class="mini-card">
+            <span class="label">주차</span>
+            <span class="value" id="weekValue">1</span>
+          </div>
+          <div class="mini-card">
+            <span class="label">에너지</span>
+            <span class="value" id="energyValue">80</span>
+          </div>
+          <div class="mini-card">
+            <span class="label">행복</span>
+            <span class="value" id="happyValue">70</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="subpanel mood">
+        <div>
+          <h2 id="alienName">루미</h2>
+          <div style="color: var(--muted); font-size: 10px; line-height: 1.7;">새싹 외계 생명체</div>
+        </div>
+        <div class="mood-chip" id="moodChip">호기심 폭발</div>
+      </div>
+
+      <div class="subpanel">
+        <h3>사운드 설정</h3>
+        <div class="audio-row">
+          <button class="audio-toggle on" id="bgmToggle">BGM 켜짐</button>
+          <button class="audio-toggle on" id="sfxToggle">효과음 켜짐</button>
+        </div>
+      </div>
+
+      <div class="subpanel">
+        <h3>이번 주 활동</h3>
+        <div class="actions">
+          <button class="action" data-action="study">🔬 연구 수업<small>지능 상승, 에너지 소모</small></button>
+          <button class="action" data-action="train">🏋 중력 훈련<small>체력 상승, 전투 감각 상승</small></button>
+          <button class="action" data-action="art">🎨 픽셀 예술<small>감수성 상승, 매력 상승</small></button>
+          <button class="action" data-action="social">🛰 우주 교류<small>사회성 상승, 행복 상승</small></button>
+          <button class="action" data-action="explore">🌌 소행성 탐사<small>모험심 상승, 랜덤 이벤트</small></button>
+          <button class="action" data-action="rest">🛌 재생 수면<small>에너지 회복, 스트레스 완화</small></button>
+        </div>
+      </div>
+
+      <div class="subpanel">
+        <h3>이벤트</h3>
+        <div class="event-box" id="eventBox">루미가 처음으로 지구식 장난감에 호기심을 보였습니다. 이번 주 무엇을 시킬까요?</div>
+      </div>
+
+      <div class="subpanel">
+        <h3>성장 기록</h3>
+        <div class="logs" id="logs"></div>
+      </div>
+
+      <div class="footer-actions">
+        <button id="randomizeBtn">외형 랜덤 변경</button>
+        <button id="restartBtn">처음부터 다시</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="ending-overlay" id="endingOverlay">
+    <div class="ending-card">
+      <div class="ending-title" id="endingTitle">엔딩</div>
+      <div class="ending-text" id="endingText"></div>
+      <div class="footer-actions">
+        <button id="closeEndingBtn">엔딩 닫기</button>
+        <button id="restartBtn2">새 육성 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const stats = [
+      { key: 'intellect', label: '지능' },
+      { key: 'stamina', label: '체력' },
+      { key: 'charm', label: '매력' },
+      { key: 'empathy', label: '감수성' },
+      { key: 'combat', label: '전투 감각' },
+      { key: 'curiosity', label: '호기심' },
+    ];
+
+    const actionMeta = {
+      study: { name: '연구 수업', icon: '📘', anim: 'anim-study', effect: 'study', duration: 1700 },
+      train: { name: '중력 훈련', icon: '💥', anim: 'anim-train', effect: 'train', duration: 1800 },
+      art: { name: '픽셀 예술', icon: '🎨', anim: 'anim-art', effect: 'art', duration: 1700 },
+      social: { name: '우주 교류', icon: '💬', anim: 'anim-social', effect: 'social', duration: 1650 },
+      explore: { name: '소행성 탐사', icon: '🚀', anim: 'anim-explore', effect: 'explore', duration: 1850 },
+      rest: { name: '재생 수면', icon: '💤', anim: 'anim-rest', effect: 'rest', duration: 1900 },
+    };
+
+    const initialState = () => ({
+      week: 1,
+      maxWeek: 12,
+      energy: 80,
+      happiness: 70,
+      stress: 20,
+      name: '루미',
+      eventText: '루미가 처음으로 지구식 장난감에 호기심을 보였습니다. 이번 주 무엇을 시킬까요?',
+      stats: {
+        intellect: 28,
+        stamina: 24,
+        charm: 22,
+        empathy: 26,
+        combat: 18,
+        curiosity: 34,
+      },
+      appearance: randomAppearance(),
+      log: ['게임 시작. 루미가 우주 알에서 깨어났습니다.'],
+      ended: false,
+      isActing: false,
+      bgmOn: true,
+      sfxOn: true,
+    });
+
+    let state = initialState();
+    let bgmCtx;
+    let sfxCtx;
+    let bgmGain;
+    let bgmOscA;
+    let bgmOscB;
+    let bgmStarted = false;
+
+    const statusGrid = document.getElementById('statusGrid');
+    const weekValue = document.getElementById('weekValue');
+    const energyValue = document.getElementById('energyValue');
+    const happyValue = document.getElementById('happyValue');
+    const moodChip = document.getElementById('moodChip');
+    const alienName = document.getElementById('alienName');
+    const eventBox = document.getElementById('eventBox');
+    const logs = document.getElementById('logs');
+    const alien = document.getElementById('alien');
+    const head = document.getElementById('head');
+    const body = document.getElementById('body');
+    const mouth = document.getElementById('mouth');
+    const endingOverlay = document.getElementById('endingOverlay');
+    const endingTitle = document.getElementById('endingTitle');
+    const endingText = document.getElementById('endingText');
+    const particleBurst = document.getElementById('particleBurst');
+    const endingHint = document.getElementById('endingHint');
+    const actionButtons = [...document.querySelectorAll('[data-action]')];
+    const activityBanner = document.getElementById('activityBanner');
+    const actionProgress = document.getElementById('actionProgress');
+    const actionProgressLabel = document.getElementById('actionProgressLabel');
+    const actionProgressValue = document.getElementById('actionProgressValue');
+    const progressFill = document.getElementById('progressFill');
+    const stageEffect = document.getElementById('stageEffect');
+    const stageIcon = document.getElementById('stageIcon');
+    const bgmToggle = document.getElementById('bgmToggle');
+    const sfxToggle = document.getElementById('sfxToggle');
+
+    function randomAppearance() {
+      const palettes = [
+        { skinTop: '#8bffde', skinBottom: '#42c5ad', suitTop: '#7f9dff', suitBottom: '#4c57c8', eye: '#ff97ef' },
+        { skinTop: '#ffd789', skinBottom: '#ff9b66', suitTop: '#8dffd0', suitBottom: '#2daa8d', eye: '#6f65ff' },
+        { skinTop: '#c4b5ff', skinBottom: '#8470ff', suitTop: '#ff97ef', suitBottom: '#c74a96', eye: '#6cf6ff' },
+        { skinTop: '#9befff', skinBottom: '#51aaff', suitTop: '#ffe07e', suitBottom: '#d99a35', eye: '#59ffb3' },
+        { skinTop: '#b0ff97', skinBottom: '#68cf59', suitTop: '#f5a8ff', suitBottom: '#954cd0', eye: '#fff27d' },
+      ];
+      return palettes[Math.floor(Math.random() * palettes.length)];
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function ensureAudio() {
+      if (!bgmCtx) {
+        bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+        bgmGain = bgmCtx.createGain();
+        bgmGain.gain.value = 0.015;
+        bgmGain.connect(bgmCtx.destination);
+
+        bgmOscA = bgmCtx.createOscillator();
+        bgmOscB = bgmCtx.createOscillator();
+        bgmOscA.type = 'square';
+        bgmOscB.type = 'triangle';
+        bgmOscA.frequency.value = 220;
+        bgmOscB.frequency.value = 330;
+        bgmOscA.connect(bgmGain);
+        bgmOscB.connect(bgmGain);
+        bgmOscA.start();
+        bgmOscB.start();
+      }
+      if (!sfxCtx) {
+        sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function scheduleBgm() {
+      if (!state.bgmOn) return;
+      ensureAudio();
+      if (bgmCtx.state === 'suspended') bgmCtx.resume();
+      if (bgmStarted) return;
+      bgmStarted = true;
+      const melody = [220, 262, 330, 294, 349, 330, 262, 196];
+      let step = 0;
+      setInterval(() => {
+        if (!state.bgmOn || !bgmOscA || !bgmOscB) return;
+        const freq = melody[step % melody.length];
+        bgmOscA.frequency.setValueAtTime(freq, bgmCtx.currentTime);
+        bgmOscB.frequency.setValueAtTime(freq * 1.5, bgmCtx.currentTime);
+        step += 1;
+      }, 320);
+    }
+
+    function updateAudioButtons() {
+      bgmToggle.textContent = state.bgmOn ? 'BGM 켜짐' : 'BGM 꺼짐';
+      sfxToggle.textContent = state.sfxOn ? '효과음 켜짐' : '효과음 꺼짐';
+      bgmToggle.classList.toggle('on', state.bgmOn);
+      sfxToggle.classList.toggle('on', state.sfxOn);
+      if (bgmGain) bgmGain.gain.value = state.bgmOn ? 0.015 : 0;
+    }
+
+    function playSfx(type = 'click') {
+      if (!state.sfxOn) return;
+      ensureAudio();
+      if (sfxCtx.state === 'suspended') sfxCtx.resume();
+      const osc = sfxCtx.createOscillator();
+      const gain = sfxCtx.createGain();
+      osc.type = type === 'rest' ? 'triangle' : type === 'good' ? 'square' : 'sawtooth';
+      const now = sfxCtx.currentTime;
+      if (type === 'click') {
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.linearRampToValueAtTime(260, now + 0.08);
+      } else if (type === 'good') {
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.linearRampToValueAtTime(780, now + 0.12);
+      } else if (type === 'bad') {
+        osc.frequency.setValueAtTime(280, now);
+        osc.frequency.linearRampToValueAtTime(160, now + 0.12);
+      } else if (type === 'rest') {
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.linearRampToValueAtTime(220, now + 0.16);
+      }
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.035, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(sfxCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    }
+
+    function renderStats() {
+      statusGrid.innerHTML = '';
+      stats.forEach(item => {
+        const value = state.stats[item.key];
+        const box = document.createElement('div');
+        box.className = 'stat-box';
+        box.innerHTML = `
+          <div class="stat-head">
+            <span>${item.label}</span>
+            <strong>${value}</strong>
+          </div>
+          <div class="bar"><i style="width:${value}%"></i></div>
+        `;
+        statusGrid.appendChild(box);
+      });
+    }
+
+    function renderLog() {
+      logs.innerHTML = '';
+      [...state.log].reverse().forEach(text => {
+        const div = document.createElement('div');
+        div.className = 'log';
+        div.textContent = text;
+        logs.appendChild(div);
+      });
+    }
+
+    function renderAppearance() {
+      head.style.setProperty('--skin-top', state.appearance.skinTop);
+      head.style.setProperty('--skin-bottom', state.appearance.skinBottom);
+      body.style.setProperty('--suit-top', state.appearance.suitTop);
+      body.style.setProperty('--suit-bottom', state.appearance.suitBottom);
+      head.style.setProperty('--eye-color', state.appearance.eye);
+      body.style.setProperty('--eye-color', state.appearance.eye);
+      document.querySelectorAll('.arm, .leg').forEach(part => {
+        part.style.setProperty('--skin-top', state.appearance.skinTop);
+        part.style.setProperty('--skin-bottom', state.appearance.skinBottom);
+      });
+    }
+
+    function getMood() {
+      const { happiness, stress, energy } = state;
+      if (energy < 25) return { label: '졸린 상태', mouth: 'tired' };
+      if (stress > 70) return { label: '예민한 상태', mouth: 'angry' };
+      if (happiness > 82) return { label: '신나는 상태', mouth: 'happy' };
+      if (state.stats.curiosity > 80) return { label: '호기심 폭발', mouth: 'happy' };
+      return { label: '안정적인 상태', mouth: 'neutral' };
+    }
+
+    function renderMood() {
+      const mood = getMood();
+      moodChip.textContent = mood.label;
+      if (mood.mouth === 'happy') {
+        mouth.style.width = '48px';
+        mouth.style.height = '14px';
+        mouth.style.clipPath = 'polygon(0 0, 100% 0, 88% 100%, 12% 100%)';
+      } else if (mood.mouth === 'angry') {
+        mouth.style.width = '44px';
+        mouth.style.height = '10px';
+        mouth.style.clipPath = 'polygon(14% 100%, 86% 100%, 100% 0, 0 0)';
+      } else if (mood.mouth === 'tired') {
+        mouth.style.width = '34px';
+        mouth.style.height = '8px';
+        mouth.style.clipPath = 'polygon(0 40%, 100% 40%, 100% 100%, 0 100%)';
+      } else {
+        mouth.style.width = '42px';
+        mouth.style.height = '12px';
+        mouth.style.clipPath = 'polygon(0 0, 100% 0, 84% 100%, 16% 100%)';
+      }
+    }
+
+    function setActionButtonsDisabled(disabled) {
+      actionButtons.forEach(btn => btn.disabled = disabled);
+    }
+
+    function render() {
+      weekValue.textContent = state.week;
+      energyValue.textContent = state.energy;
+      happyValue.textContent = state.happiness;
+      alienName.textContent = state.name;
+      eventBox.innerHTML = state.eventText;
+      endingHint.textContent = state.ended ? '엔딩 확인 완료' : `${state.maxWeek}주 육성 프로젝트`;
+      renderStats();
+      renderLog();
+      renderAppearance();
+      renderMood();
+      updateAudioButtons();
+      setActionButtonsDisabled(state.isActing || state.ended);
+    }
+
+    function addLog(text) {
+      state.log.push(`[${Math.min(state.week, state.maxWeek)}주차] ${text}`);
+      if (state.log.length > 14) state.log.shift();
+    }
+
+    function animateReaction(type = 'celebrate') {
+      alien.classList.remove('shake', 'celebrate');
+      void alien.offsetWidth;
+      alien.classList.add(type);
+      setTimeout(() => alien.classList.remove(type), 700);
+    }
+
+    function burstParticles(count = 18) {
+      const rect = alien.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 3;
+      const palette = ['#ffffff', '#6cf6ff', '#ff97ef', '#ffde68', '#9dff9c'];
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = `${cx}px`;
+        p.style.top = `${cy}px`;
+        p.style.background = palette[Math.floor(Math.random() * palette.length)];
+        p.style.setProperty('--dx', `${(Math.random() - 0.5) * 220}px`);
+        p.style.setProperty('--dy', `${(Math.random() - 0.5) * 220}px`);
+        p.style.width = `${6 + Math.floor(Math.random() * 8)}px`;
+        p.style.height = p.style.width;
+        particleBurst.appendChild(p);
+        setTimeout(() => p.remove(), 850);
+      }
+    }
+
+    function spawnStageIcons(icon, duration = 1500) {
+      const total = 8;
+      for (let i = 0; i < total; i++) {
+        const node = document.createElement('div');
+        node.className = 'stage-icon show';
+        node.textContent = icon;
+        node.style.left = `${18 + Math.random() * 64}%`;
+        node.style.top = `${18 + Math.random() * 56}%`;
+        node.style.transition = 'transform .7s steps(4), opacity .7s steps(4)';
+        document.getElementById('stage').appendChild(node);
+        requestAnimationFrame(() => {
+          node.style.transform = `translate(${(Math.random() - 0.5) * 120}px, ${-40 - Math.random() * 80}px)`;
+          node.style.opacity = '0';
+        });
+        setTimeout(() => node.remove(), duration);
+      }
+    }
+
+    function generateEvent(action) {
+      const roll = Math.random();
+      if (action === 'explore') {
+        if (roll < 0.28) {
+          state.stats.curiosity = clamp(state.stats.curiosity + 6, 0, 100);
+          state.stats.charm = clamp(state.stats.charm + 4, 0, 100);
+          return '루미가 <span class="highlight">반짝이는 소행성 조각</span>을 발견했습니다. 수집한 재료로 장식품을 만들며 자신감이 올랐습니다.';
+        }
+        if (roll < 0.56) {
+          state.energy = clamp(state.energy - 6, 0, 100);
+          state.stress = clamp(state.stress + 8, 0, 100);
+          return '탐사 도중 작은 운석 비가 쏟아졌습니다. 놀랐지만 무사히 귀환했고, 위기 대처 감각이 조금 생겼습니다.';
+        }
+        if (roll < 0.82) {
+          state.stats.combat = clamp(state.stats.combat + 8, 0, 100);
+          state.happiness = clamp(state.happiness + 8, 0, 100);
+          return '신비한 외계 생명체와 친구가 되었습니다. 루미는 <span class="highlight">새로운 움직임과 인사법</span>을 배웠습니다.';
+        }
+        state.stats.intellect = clamp(state.stats.intellect + 7, 0, 100);
+        return '길 잃은 탐사 드론을 복구했습니다. 루미는 별자리 지도를 읽는 능력을 익혔습니다.';
+      }
+
+      if (action === 'study' && roll < 0.32) {
+        state.stats.intellect = clamp(state.stats.intellect + 5, 0, 100);
+        return '양자 퍼즐을 빠르게 풀어 교관을 놀라게 했습니다. 연구실에서 작은 박수를 받았습니다.';
+      }
+      if (action === 'train' && roll < 0.32) {
+        state.stats.stamina = clamp(state.stats.stamina + 5, 0, 100);
+        return '중력 반전 코스를 완주했습니다. 루미의 발걸음이 훨씬 당당해졌습니다.';
+      }
+      if (action === 'art' && roll < 0.32) {
+        state.happiness = clamp(state.happiness + 4, 0, 100);
+        return '픽셀 홀로그램으로 밤하늘을 그렸습니다. 외계 친구들이 작품을 보고 감탄했습니다.';
+      }
+      if (action === 'social' && roll < 0.32) {
+        state.stats.charm = clamp(state.stats.charm + 5, 0, 100);
+        return '은하 광장 발표에서 미소가 빛났습니다. 루미를 기억하는 친구가 늘었습니다.';
+      }
+      if (action === 'rest' && roll < 0.34) {
+        state.stress = clamp(state.stress - 8, 0, 100);
+        return '재생 캡슐에서 깊은 휴식을 취했습니다. 꿈속에서 들은 별의 속삭임이 마음을 편하게 했습니다.';
+      }
+
+      const generic = {
+        study: '데이터 큐브를 정리하며 생각하는 힘을 길렀습니다.',
+        train: '근육과 균형 감각을 단단히 다졌습니다.',
+        art: '빛과 색을 다루며 자신만의 감성을 표현했습니다.',
+        social: '낯선 존재들과 대화하며 세상을 넓게 이해했습니다.',
+        rest: '충분한 회복으로 생체 리듬이 안정되었습니다.',
+      };
+
+      return generic[action] || '조용하지만 의미 있는 한 주를 보냈습니다.';
+    }
+
+    function getEnding() {
+      const s = state.stats;
+      const sum = Object.values(s).reduce((a, b) => a + b, 0);
+      const avg = sum / Object.keys(s).length;
+
+      if (s.intellect >= 88 && s.curiosity >= 82 && s.empathy >= 60) {
+        return {
+          title: '우주 문명 설계자 엔딩',
+          text: '루미는 지식과 통찰을 이용해 여러 행성의 도시 시스템을 설계하는 존재가 되었습니다.\n별과 생명체가 함께 오래 살아갈 수 있는 질서를 만들어 냅니다.'
+        };
+      }
+      if (s.intellect >= 80 && s.curiosity >= 75) {
+        return {
+          title: '성간 과학자 엔딩',
+          text: '루미는 미지의 현상을 설명하는 젊은 과학자가 되었습니다.\n끝없는 호기심으로 새로운 항로와 에너지 이론을 발견하며 은하 연구소의 주목을 받습니다.'
+        };
+      }
+      if (s.combat >= 88 && s.stamina >= 82 && state.energy >= 45) {
+        return {
+          title: '은하 챔피언 엔딩',
+          text: '루미는 각 행성 대회를 휩쓰는 전설적인 챔피언이 되었습니다.\n압도적인 체력과 집중력으로 누구도 쉽게 넘볼 수 없는 이름이 됩니다.'
+        };
+      }
+      if (s.combat >= 78 && s.stamina >= 75) {
+        return {
+          title: '우주 수호대 엔딩',
+          text: '루미는 강인한 체력과 위기 대응 능력으로 우주 수호대에 합류했습니다.\n소행성 지대와 변방 행성에서 모두를 지키는 든든한 존재가 됩니다.'
+        };
+      }
+      if (s.charm >= 88 && s.empathy >= 78 && state.happiness >= 78) {
+        return {
+          title: '은하 아이돌 엔딩',
+          text: '루미는 노래와 퍼포먼스로 수많은 종족을 사로잡는 은하 아이돌이 되었습니다.\n공연이 열리는 날이면 우주 정거장이 축제처럼 빛납니다.'
+        };
+      }
+      if (s.charm >= 78 && s.empathy >= 72) {
+        return {
+          title: '은하 외교관 엔딩',
+          text: '루미는 따뜻한 공감과 매력으로 여러 종족을 연결하는 외교관이 되었습니다.\n갈등이 있는 자리에서도 웃음과 신뢰를 만들어냅니다.'
+        };
+      }
+      if (s.empathy >= 88 && s.charm >= 72 && s.intellect >= 62) {
+        return {
+          title: '꿈치유사 엔딩',
+          text: '루미는 상처 입은 존재들의 마음을 회복시키는 꿈치유사가 되었습니다.\n은은한 빛과 이야기로 누군가의 긴 밤을 견디게 만듭니다.'
+        };
+      }
+      if (s.empathy >= 80 && s.intellect >= 60) {
+        return {
+          title: '별빛 예술가 엔딩',
+          text: '루미는 감정을 빛으로 바꾸는 예술가가 되었습니다.\n그 작품은 상처 입은 존재들에게 위로가 되었고, 우주 전시회에서 큰 사랑을 받습니다.'
+        };
+      }
+      if (s.curiosity >= 90 && s.intellect >= 70 && s.combat >= 55) {
+        return {
+          title: '차원 탐사자 엔딩',
+          text: '루미는 누구보다 먼저 미지의 문을 통과하는 차원 탐사자가 되었습니다.\n새로운 세계를 발견할 때마다 자신의 이름이 기록됩니다.'
+        };
+      }
+      if (avg >= 78) {
+        return {
+          title: '전설의 만능 영웅 엔딩',
+          text: '루미는 어느 분야에서도 크게 부족함이 없는 완성형 외계인으로 성장했습니다.\n도움이 필요한 곳마다 먼저 떠오르는 이름이 됩니다.'
+        };
+      }
+      if (avg >= 68) {
+        return {
+          title: '만능 탐험가 엔딩',
+          text: '루미는 어느 한쪽에 치우치지 않은 균형 잡힌 능력으로 어디서든 활약하는 탐험가가 되었습니다.\n새로운 세계를 만나면 가장 먼저 인사하는 존재가 됩니다.'
+        };
+      }
+      if (state.happiness >= 88 && state.stress <= 24) {
+        return {
+          title: '행복한 은하 생활자 엔딩',
+          text: '루미는 가장 빛나는 성공보다 즐거운 일상과 좋은 관계를 택했습니다.\n작지만 반짝이는 행복으로 주변 사람들을 미소 짓게 합니다.'
+        };
+      }
+      if (state.happiness < 35 || state.stress > 78) {
+        return {
+          title: '느린 재충전 엔딩',
+          text: '루미는 잠시 경쟁을 멈추고 자신을 돌보는 길을 택했습니다.\n화려한 명성보다 마음의 평화를 먼저 배우며, 다음 성장을 준비합니다.'
+        };
+      }
+      return {
+        title: '평화로운 우주 시민 엔딩',
+        text: '루미는 소박하지만 반짝이는 일상을 살아가는 우주 시민이 되었습니다.\n작은 친절과 즐거움으로 주변을 따뜻하게 만드는 존재가 됩니다.'
+      };
+    }
+
+    function finalizeAction(action) {
+      const delta = {
+        study: { intellect: 12, curiosity: 5, energy: -16, happiness: -2, stress: 10 },
+        train: { stamina: 11, combat: 10, energy: -18, happiness: -1, stress: 8 },
+        art: { empathy: 9, charm: 10, energy: -10, happiness: 8, stress: -4 },
+        social: { charm: 9, empathy: 7, curiosity: 4, energy: -9, happiness: 10, stress: -8 },
+        explore: { curiosity: 12, combat: 4, intellect: 5, energy: -14, happiness: 5, stress: 2 },
+        rest: { energy: 22, happiness: 6, stress: -14 },
+      }[action];
+
+      Object.entries(delta).forEach(([key, value]) => {
+        if (key in state.stats) state.stats[key] = clamp(state.stats[key] + value, 0, 100);
+      });
+
+      state.energy = clamp(state.energy + (delta.energy || 0), 0, 100);
+      state.happiness = clamp(state.happiness + (delta.happiness || 0), 0, 100);
+      state.stress = clamp(state.stress + (delta.stress || 0), 0, 100);
+
+      const event = generateEvent(action);
+      state.eventText = event;
+      addLog(`${actionMeta[action].name} 진행. ${event.replace(/<[^>]+>/g, '')}`);
+
+      const positive = (delta.happiness || 0) >= 0 && (delta.energy || 0) > -18;
+      playSfx(action === 'rest' ? 'rest' : positive ? 'good' : 'bad');
+      animateReaction(positive ? 'celebrate' : 'shake');
+      burstParticles(positive ? 18 : 10);
+
+      state.week += 1;
+      state.isActing = false;
+      alien.classList.remove(...Object.values(actionMeta).map(v => v.anim));
+      stageEffect.className = 'stage-effect';
+      activityBanner.classList.remove('show');
+      actionProgress.classList.remove('show');
+      progressFill.style.width = '0%';
+      actionProgressValue.textContent = '0%';
+
+      if (state.week > state.maxWeek) {
+        endGame();
+      }
+      render();
+    }
+
+    function startActionSequence(action) {
+      if (state.ended || state.isActing) return;
+      ensureAudio();
+      scheduleBgm();
+      playSfx('click');
+
+      const meta = actionMeta[action];
+      state.isActing = true;
+      state.eventText = `${meta.name}을 시작했습니다. 루미가 열심히 활동하는 중입니다.`;
+      render();
+
+      alien.classList.remove(...Object.values(actionMeta).map(v => v.anim));
+      alien.classList.add(meta.anim);
+      activityBanner.textContent = `${meta.name} 진행 중`;
+      activityBanner.classList.add('show');
+      actionProgress.classList.add('show');
+      actionProgressLabel.textContent = meta.name;
+      actionProgressValue.textContent = '0%';
+      progressFill.style.width = '0%';
+      stageEffect.className = `stage-effect show ${meta.effect}`;
+      stageIcon.textContent = meta.icon;
+      spawnStageIcons(meta.icon, meta.duration);
+
+      const duration = meta.duration;
+      const started = performance.now();
+
+      function tick(now) {
+        const elapsed = now - started;
+        const ratio = clamp(elapsed / duration, 0, 1);
+        const pct = Math.floor(ratio * 100);
+        progressFill.style.width = `${pct}%`;
+        actionProgressValue.textContent = `${pct}%`;
+        if (ratio < 1 && state.isActing) {
+          requestAnimationFrame(tick);
+        } else if (state.isActing) {
+          finalizeAction(action);
+        }
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    function endGame() {
+      state.ended = true;
+      const ending = getEnding();
+      endingTitle.textContent = ending.title;
+      endingText.textContent = ending.text;
+      endingOverlay.classList.add('show');
+      burstParticles(38);
+      playSfx('good');
+      animateReaction('celebrate');
+      addLog(`최종 결과: ${ending.title}`);
+      renderLog();
+      render();
+    }
+
+    function restartGame() {
+      state = initialState();
+      endingOverlay.classList.remove('show');
+      alien.classList.remove(...Object.values(actionMeta).map(v => v.anim));
+      stageEffect.className = 'stage-effect';
+      activityBanner.classList.remove('show');
+      actionProgress.classList.remove('show');
+      render();
+      burstParticles(16);
+      playSfx('click');
+      scheduleBgm();
+    }
+
+    actionButtons.forEach(btn => {
+      btn.addEventListener('click', () => startActionSequence(btn.dataset.action));
+    });
+
+    bgmToggle.addEventListener('click', () => {
+      state.bgmOn = !state.bgmOn;
+      ensureAudio();
+      scheduleBgm();
+      updateAudioButtons();
+      playSfx('click');
+    });
+
+    sfxToggle.addEventListener('click', () => {
+      state.sfxOn = !state.sfxOn;
+      updateAudioButtons();
+      if (state.sfxOn) playSfx('click');
+    });
+
+    document.getElementById('randomizeBtn').addEventListener('click', () => {
+      ensureAudio();
+      scheduleBgm();
+      state.appearance = randomAppearance();
+      state.eventText = '루미가 새로운 생체 색으로 반짝였습니다. 픽셀 우주에서 분위기가 살짝 달라졌습니다.';
+      addLog('외형 색상을 새롭게 조정했습니다.');
+      render();
+      burstParticles(20);
+      playSfx('good');
+      animateReaction('celebrate');
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', restartGame);
+    document.getElementById('restartBtn2').addEventListener('click', restartGame);
+    document.getElementById('closeEndingBtn').addEventListener('click', () => endingOverlay.classList.remove('show'));
+
+    document.body.addEventListener('pointerdown', () => {
+      ensureAudio();
+      scheduleBgm();
+    }, { once: true });
+
+    render();
+  </script>
+</body>
+</html>

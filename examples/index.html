@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud-Barista Game Center</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            text-align: center;
+            padding: 2.5rem 1rem 1.5rem;
+        }
+        header h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(90deg, #ff6fd8, #3813c2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.3rem;
+        }
+        header p {
+            color: #aaa;
+            font-size: 0.95rem;
+        }
+        .games {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.2rem;
+            padding: 1.5rem;
+            max-width: 900px;
+            width: 100%;
+        }
+        .game-card {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 1.5rem;
+            text-align: center;
+            text-decoration: none;
+            color: #fff;
+            transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .game-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.13);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+        .game-card .icon {
+            font-size: 2.8rem;
+            margin-bottom: 0.7rem;
+            display: block;
+        }
+        .game-card .title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+        .game-card .desc {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        footer {
+            margin-top: auto;
+            padding: 1.5rem;
+            color: #555;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+        footer a { color: #888; text-decoration: none; }
+        footer a:hover { color: #ccc; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎮 Cloud-Barista Game Center</h1>
+        <p>Deployed on Multi-Cloud Infrastructure</p>
+    </header>
+
+    <div class="games">
+        <a class="game-card" href="minesweeper.html">
+            <span class="icon">💣</span>
+            <div class="title">Minesweeper</div>
+            <div class="desc">지뢰찾기</div>
+        </a>
+        <a class="game-card" href="pacman.html">
+            <span class="icon">👻</span>
+            <div class="title">Pac-Man</div>
+            <div class="desc">팩맨</div>
+        </a>
+        <a class="game-card" href="worm_game.html">
+            <span class="icon">🐍</span>
+            <div class="title">Worm</div>
+            <div class="desc">지렁이 게임</div>
+        </a>
+        <a class="game-card" href="space_cell_game.html">
+            <span class="icon">🚀</span>
+            <div class="title">Space Cell</div>
+            <div class="desc">우주 셀 게임</div>
+        </a>
+        <a class="game-card" href="ghost_busting_game.html">
+            <span class="icon">👾</span>
+            <div class="title">Ghost Busting</div>
+            <div class="desc">유령 잡기</div>
+        </a>
+        <a class="game-card" href="dahamkke_chachacha_game.html">
+            <span class="icon">🎶</span>
+            <div class="title">다함께 차차차</div>
+            <div class="desc">리듬 게임</div>
+        </a>
+        <a class="game-card" href="galaga-coin.html">
+            <span class="icon">🕹️</span>
+            <div class="title">Galaga Coin</div>
+            <div class="desc">갤러가 코인 게임</div>
+        </a>
+        <a class="game-card" href="bubble-bobble.html">
+            <span class="icon">🫧</span>
+            <div class="title">Bubble Bobble</div>
+            <div class="desc">버블보글</div>
+        </a>
+        <a class="game-card" href="tetris.html">
+            <span class="icon">🧱</span>
+            <div class="title">Tetris</div>
+            <div class="desc">테트리스</div>
+        </a>
+        <a class="game-card" href="alienmaker_game.html">
+            <span class="icon">👽</span>
+            <div class="title">Alien Maker</div>
+            <div class="desc">에일리언 메이커</div>
+        </a>
+    </div>
+
+    <h2 style="margin-top: 1.5rem; font-size: 1.3rem; color: #aaa;">📋 Contest</h2>
+    <div class="games" style="max-width: 320px;">
+        <a class="game-card" href="game_contest.html" style="border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.06);">
+            <span class="icon">🏆</span>
+            <div class="title">Game Contest</div>
+            <div class="desc">게임 개발 컨테스트 결과</div>
+        </a>
+    </div>
+
+    <footer>
+        Powered by <a href="https://github.com/cloud-barista" target="_blank">Cloud-Barista</a>
+    </footer>
+</body>
+</html>

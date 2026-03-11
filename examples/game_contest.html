@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏆 HTML 게임 콘테스트 2025</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body,#root{width:100%;height:100%;overflow:hidden}
+  body{font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;background:#000;color:#e2e8f0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ═══ Data ═══ */
+const games=[
+  {rank:1,name:"황제성",game:"비트코인 채굴기 (지뢰찾기)",emoji:"₿",color:"#f7931a",accent:"#ffd54f",bg:"radial-gradient(ellipse at 30% 30%,#2d1800,#0a0500 60%,#000)",scores:{completeness:97,immersion:96,creativity:98,bonus:10},total:null,review:"지뢰찾기의 틀을 비트코인 채굴이라는 세계관으로 완전히 재탄생시킨 역작입니다. 반감기 시스템, 실시간 시세 차트, 러그풀 코멘터리, 승리 패배 시 수십 가지 대사 변화, 난이도 3단계, 컨페티 연출까지. 단일 HTML 파일이라고 믿기 어려운 완성도입니다.",highlights:["세계관 몰입이 압도적","메타 시스템이 게임성을 극대화","상황별 코멘터리가 신선함 유지"]},
+  {rank:2,name:"가온",game:"다함께 차차차",emoji:"🎵",color:"#ff7b54",accent:"#ffd166",bg:"radial-gradient(ellipse at 70% 30%,#2d1200,#0a0300 60%,#000)",scores:{completeness:95,immersion:94,creativity:93,bonus:8},total:null,review:"리듬 러닝 게임이라는 독자적인 장르를 완성해냈습니다. 3차선 원근감 트랙, 군중 애니메이션, 스테이지 전환에 따른 배경색 변화, 차차 에너지 부스트 시스템까지. 시각적 완성도와 게임 메커니즘 모두 높은 수준입니다.",highlights:["원근법 기반 3D 트랙 렌더링","8단계 스테이지와 점진적 난이도","모바일 터치 대응"]},
+  {rank:3,name:"허성범",game:"FACE MUNCHER (팩맨)",emoji:"👾",color:"#a78bfa",accent:"#2121de",bg:"radial-gradient(ellipse at 50% 40%,#1a1040,#08040a 60%,#000)",scores:{completeness:93,immersion:90,creativity:88,bonus:7},total:null,review:"클래식 팩맨을 충실하게 구현하면서도, 캐릭터를 얼굴로 바꾸는 위트를 더했습니다. 4종 고스트의 개별 AI, 정확한 맵 재현, 파워펠릿 시스템까지. 게임 엔진 수준의 구현력입니다.",highlights:["4종 고스트 개별 AI","얼굴 캐릭터 위트","밸런싱과 레벨 시스템"]},
+  {rank:4,name:"곽재식",game:"우주 세포 포식 게임",emoji:"🌌",color:"#06b6d4",accent:"#22c55e",bg:"radial-gradient(ellipse at 40% 20%,#001a2d,#000a12 60%,#000)",scores:{completeness:88,immersion:91,creativity:86,bonus:5},total:null,review:"아가리오 스타일의 세포 포식 게임을 우주 배경으로 풀어냈습니다. 부드러운 물리 엔진, 세포의 탄성 애니메이션, 별빛 배경 등 비주얼 완성도가 높습니다.",highlights:["세포 탄성 애니메이션","면적 기반 성장 시스템","부스트와 파티클"]},
+  {rank:5,name:"하석진",game:"귀여운 지렁이 게임",emoji:"🐛",color:"#ff5fa2",accent:"#ffb3d1",bg:"radial-gradient(ellipse at 60% 60%,#2d0018,#0a0005 60%,#000)",scores:{completeness:82,immersion:78,creativity:85,bonus:6},total:null,review:"클래식 스네이크 게임에 CB MapUI의 클라우드 아이콘을 먹이로 활용한 아이디어가 돋보입니다. 손박사 얼굴 헤드와 화려한 파티클 이펙트가 재미를 줍니다.",highlights:["CB-MapUI 아이콘 먹이","파티클+충격파 이펙트","손박사 얼굴 헤드"]},
+  {rank:6,name:"츠키",game:"귀신 퇴치 게임",emoji:"👻",color:"#8ef0ff",accent:"#5a9bff",bg:"radial-gradient(ellipse at 50% 50%,#001828,#000810 60%,#000)",scores:{completeness:76,immersion:74,creativity:72,bonus:4},total:null,review:"30초 제한 시간 내 귀신 클릭 게임으로, 깔끔한 다크 UI와 조준선 연출이 분위기를 잘 잡아줍니다.",highlights:["다크 테마+안개 애니메이션","감각적 조준선","최고점수 저장"]},
+];
+games.forEach(g=>{g.total=g.scores.completeness+g.scores.immersion+g.scores.creativity+g.scores.bonus});
+const gameByRank=r=>games.find(g=>g.rank===r);
+
+// Default order presets
+const PRESETS={
+  standard:{label:"기본 (6→5→4→3→2→1)",order:[[6],[5],[4],[3],[2],[1]]},
+  tension:{label:"긴장감 (5→4→3→2→마지막: 1위&6위 동시)",order:[[5],[4],[3],[2],[1,6]]},
+  topFirst:{label:"역순 (1→2→3→4→5→6)",order:[[1],[2],[3],[4],[5],[6]]},
+  pairwise:{label:"짝 공개 (5&6→3&4→1&2)",order:[[5,6],[3,4],[1,2]]},
+};
+
+/* ═══ API Key ═══ */
+let _apiKey="";
+function setApiKey(k){_apiKey=k}
+function getApiKey(){return _apiKey}
+
+/* ═══ Claude API ═══ */
+async function generateMCNarration(game,type){
+  const key=getApiKey();if(!key)return null;
+  const sys=`당신은 게임 콘테스트의 열정적인 MC입니다. 한국 예능 MC처럼 감정이 풍부하고, 긴장감과 흥분을 최대로 끌어올립니다.\n규칙:\n- 한국어만\n- 2~4문장 간결하게\n- "..." 쉬는 구간 적극 활용\n- 느낌표, 감탄사 풍부하게\n- 순위별 감정 강도 조절 (1위가 가장 극적)\n- 순수 텍스트만 출력`;
+  let u="";
+  if(type==="announce"){
+    u=`순위 발표! 시상식 봉투를 여는 것처럼 극적으로!\n${game.rank}위: ${game.name}\n게임: ${game.game}\n총점: ${game.total}점\n${game.rank===1?"최종 1위! 최고로 극적 축하 톤!":game.rank<=3?"TOP 3! 흥분 톤!":"발표하되 다음 기대감도."}`;
+  }else if(type==="review"){
+    u=`게임 평가를 감성 해설로.\n${game.name}의 "${game.game}"\n평가: ${game.review}\n완성도:${game.scores.completeness} 몰입:${game.scores.immersion} 창의:${game.scores.creativity}\n감탄+칭찬 섞어 3~5문장.`;
+  }else if(type==="final"){
+    u=`최종 발표! 시상대 묘사.\n1위:황제성 301점\n2위:가온 290점\n3위:허성범 278점\n모든 참가자 감사 포함 마무리 4~6문장 감동적으로!`;
+  }else if(type==="multi"){
+    const names=game.map(g=>`${g.rank}위 ${g.name}(${g.game},${g.total}점)`).join(", ");
+    u=`동시에 여러 순위를 발표합니다! 극적으로!\n${names}\n한꺼번에 공개되는 서프라이즈 느낌으로 3~4문장.`;
+  }
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:[{role:"user",content:u}]})});
+    const d=await r.json();return d.content?.find(b=>b.type==="text")?.text||null;
+  }catch(e){console.error(e);return null;}
+}
+
+/* ═══ TTS ═══ */
+function useTTS(){
+  const[speaking,setSpeaking]=useState(false);const qRef=useRef([]);
+  useEffect(()=>{const l=()=>speechSynthesis?.getVoices();l();speechSynthesis?.addEventListener?.("voiceschanged",l);return()=>speechSynthesis?.removeEventListener?.("voiceschanged",l)},[]);
+  const speakSegs=useCallback(segs=>{if(!speechSynthesis)return;speechSynthesis.cancel();qRef.current=[...segs];setSpeaking(true);
+    const next=()=>{if(!qRef.current.length){setSpeaking(false);return}const s=qRef.current.shift();if(s.pause){setTimeout(next,s.pause);return}const u=new SpeechSynthesisUtterance(s.text);const ko=speechSynthesis.getVoices().find(v=>v.lang.startsWith("ko"));if(ko)u.voice=ko;u.lang="ko-KR";u.rate=s.rate||1;u.pitch=s.pitch||1;u.onend=next;u.onerror=next;speechSynthesis.speak(u)};next();},[]);
+  const speak=useCallback((t,o={})=>speakSegs([{text:t,rate:o.rate||1,pitch:o.pitch||1}]),[speakSegs]);
+  const speakDramatic=useCallback(t=>{const parts=t.split(/(\.\.\.|！|!)/).filter(Boolean);const segs=[];let ex=0.9;
+    parts.forEach((p,i)=>{const tr=p.trim();if(tr==="..."||tr==="\u2026")segs.push({pause:600});else if(tr==="\uff01"||tr==="!"){}else if(tr){const isEnd=i>=parts.length-2;const hasEx=p.includes("!")||p.includes("\uff01");segs.push({text:tr,rate:hasEx?1.1:isEnd?.95:ex,pitch:hasEx?1.25:isEnd?1.15:1+(i*.05)});ex+=.03;if(i<parts.length-1&&!parts[i+1]?.match(/^(\.\.\.|！|!)$/))segs.push({pause:250})}});speakSegs(segs)},[speakSegs]);
+  const stop=useCallback(()=>{speechSynthesis?.cancel();qRef.current=[];setSpeaking(false)},[]);
+  return{speak,speakDramatic,stop,speaking};
+}
+
+/* ═══ SFX ═══ */
+function useSFX(){
+  const rRef=useRef(false),sRef=useRef(null),bgmRef=useRef(null),bgmStartedRef=useRef(false);
+  const ensureReady=useCallback(async()=>{if(rRef.current)return;await Tone.start();rRef.current=true},[]);
+  const S=useCallback(()=>{if(sRef.current)return sRef.current;const rv=new Tone.Reverb({decay:1.4,wet:.25}).toDestination();
+    sRef.current={metal:new Tone.MetalSynth({frequency:200,envelope:{attack:.001,decay:.14,release:.05},harmonicity:5.1,modulationIndex:16,resonance:2000,octaves:1.5,volume:-14}).connect(rv),drum:new Tone.MembraneSynth({pitchDecay:.04,octaves:4,oscillator:{type:"sine"},envelope:{attack:.001,decay:.2,sustain:0,release:.4},volume:-10}).connect(rv),bell:new Tone.PolySynth(Tone.Synth,{oscillator:{type:"sine"},envelope:{attack:.005,decay:.6,sustain:.1,release:1.2},volume:-12}).connect(rv),brass:new Tone.PolySynth(Tone.Synth,{oscillator:{type:"sawtooth"},envelope:{attack:.02,decay:.3,sustain:.4,release:.6},volume:-16}).connect(rv),noise:new Tone.NoiseSynth({noise:{type:"white"},envelope:{attack:.005,decay:.15,sustain:0},volume:-22}).connect(rv)};return sRef.current},[]);
+  const drumAccent=useCallback(async()=>{await ensureReady();const s=S();s.metal.triggerAttackRelease("16n");s.drum.triggerAttackRelease("C1","8n")},[ensureReady,S]);
+  const tensionRoll=useCallback(async(dur=2)=>{await ensureReady();const s=S(),now=Tone.now(),n=Math.floor(dur/.07);for(let i=0;i<n;i++){const t=now+i*.07,v=.12+(i/n)*.7;s.drum.triggerAttackRelease("C2","64n",t,v);if(i%3===0)s.noise.triggerAttackRelease("64n",t,v*.35)}},[ensureReady,S]);
+  const revealChime=useCallback(async rk=>{await ensureReady();const s=S(),now=Tone.now();if(rk<=3){["E4","G4","B4"].forEach((n,i)=>s.bell.triggerAttackRelease(n,"8n",now+i*.12,.7));s.bell.triggerAttackRelease("E5","4n",now+.4,.8);s.metal.triggerAttackRelease("16n",now+.5)}else{s.bell.triggerAttackRelease("C4","8n",now,.5);s.bell.triggerAttackRelease("E4","8n",now+.12,.6)}},[ensureReady,S]);
+  const fanfare=useCallback(async()=>{await ensureReady();const s=S(),now=Tone.now();[{n:"C4",t:0,d:"8n"},{n:"E4",t:.18,d:"8n"},{n:"G4",t:.36,d:"8n"},{n:"C5",t:.54,d:"4n"},{n:"G4",t:.85,d:"16n"},{n:"C5",t:1,d:"2n"}].forEach(x=>s.brass.triggerAttackRelease(x.n,x.d,now+x.t,.7));s.bell.triggerAttackRelease(["C5","E5","G5"],"2n",now+1.2,.5);s.metal.triggerAttackRelease("4n",now+1.2);s.drum.triggerAttackRelease("C1","4n",now+1.2,.8)},[ensureReady,S]);
+  const clickSound=useCallback(async()=>{await ensureReady();S().bell.triggerAttackRelease("A5","32n",Tone.now(),.3)},[ensureReady,S]);
+  const whoosh=useCallback(async()=>{await ensureReady();S().noise.triggerAttackRelease("8n",Tone.now(),.3)},[ensureReady,S]);
+
+  // BGM ambient loop
+  const startBGM=useCallback(async()=>{
+    if(bgmStartedRef.current)return;await ensureReady();bgmStartedRef.current=true;
+    const rv2=new Tone.Reverb({decay:4,wet:.5}).toDestination();
+    const pad=new Tone.PolySynth(Tone.Synth,{oscillator:{type:"sine"},envelope:{attack:2,decay:1,sustain:.6,release:3},volume:-28}).connect(rv2);
+    const tick=new Tone.MetalSynth({frequency:80,envelope:{attack:.001,decay:.06,release:.02},harmonicity:3,modulationIndex:8,resonance:800,octaves:1,volume:-30}).connect(rv2);
+    // Slow chord progression loop
+    const chords=[["C3","E3","G3"],["A2","C3","E3"],["F2","A2","C3"],["G2","B2","D3"]];
+    let ci=0;
+    const chordLoop=new Tone.Loop(t=>{pad.triggerAttackRelease(chords[ci%chords.length],"2m",t,.3);ci++},"2m");
+    chordLoop.start(0);
+    // Soft tick every beat
+    const tickLoop=new Tone.Loop(t=>{tick.triggerAttackRelease("16n",t)},"2n");
+    tickLoop.start(0);
+    Tone.Transport.bpm.value=72;Tone.Transport.start();
+    bgmRef.current={pad,tick,chordLoop,tickLoop,rv:rv2};
+  },[ensureReady]);
+
+  const stopBGM=useCallback(()=>{if(!bgmRef.current)return;const b=bgmRef.current;b.chordLoop.stop();b.tickLoop.stop();b.pad.releaseAll();Tone.Transport.stop();bgmStartedRef.current=false;bgmRef.current=null},[]);
+
+  return{drumAccent,tensionRoll,revealChime,fanfare,clickSound,whoosh,ensureReady,startBGM,stopBGM};
+}
+
+/* ═══ Small Components ═══ */
+const ScoreBar=({label,value,color,delay=0})=>{const[w,setW]=useState(0);useEffect(()=>{const t=setTimeout(()=>setW(value),400+delay);return()=>clearTimeout(t)},[value,delay]);return(<div style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:14,fontWeight:700}}><span style={{color:"rgba(255,255,255,0.6)"}}>{label}</span><span style={{color,fontSize:18,fontWeight:900}}>{value}</span></div><div style={{height:10,borderRadius:5,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}><div style={{height:"100%",width:`${w}%`,borderRadius:5,background:`linear-gradient(90deg,${color},${color}88)`,transition:"width 1s cubic-bezier(0.4,0,0.2,1)",boxShadow:`0 0 12px ${color}44`}}/></div></div>)};
+const Confetti=()=>{const items=Array.from({length:50},(_,i)=>({l:Math.random()*100,d:Math.random()*1.5,du:2+Math.random()*2,c:["🎉","✨","⭐","🏆","₿","💎","🚀","🎊"][i%8],s:14+Math.random()*18}));return(<div style={{position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden",zIndex:5}}>{items.map((c,i)=><div key={i} style={{position:"absolute",left:`${c.l}%`,top:-30,fontSize:c.s,animation:`cFall ${c.du}s ease-in ${c.d}s forwards`}}>{c.c}</div>)}<style>{`@keyframes cFall{0%{transform:translateY(0) rotate(0);opacity:1}80%{opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}`}</style></div>)};
+const Loader=({color})=>(<div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"center",padding:12}}><div style={{width:18,height:18,border:`2px solid ${color}44`,borderTop:`2px solid ${color}`,borderRadius:"50%",animation:"spin .8s linear infinite"}}/><span style={{fontSize:13,fontWeight:700,color,opacity:.8}}>MC 멘트 생성 중...</span><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>);
+
+/* ═══ Setup Page (API key + reveal order) ═══ */
+const SetupPage=({onComplete,sfx})=>{
+  const[key,setKey]=useState("");
+  const[mode,setMode]=useState(null);
+  const[preset,setPreset]=useState("tension");
+  const[customOrder,setCustomOrder]=useState(PRESETS.tension.order);
+  const[showOrderEdit,setShowOrderEdit]=useState(false);
+  const[dragIdx,setDragIdx]=useState(null);
+
+  const handleStart=async(useKey)=>{
+    if(useKey&&key.trim())setApiKey(key.trim());
+    await sfx.ensureReady();
+    sfx.startBGM();
+    sfx.drumAccent();
+    onComplete(customOrder);
+  };
+
+  const selectPreset=p=>{setPreset(p);setCustomOrder(PRESETS[p].order)};
+
+  const moveStep=(from,to)=>{
+    if(to<0||to>=customOrder.length)return;
+    const n=[...customOrder];const[item]=n.splice(from,1);n.splice(to,0,item);setCustomOrder(n);setPreset("custom");
+  };
+
+  return(
+    <div style={{width:"100%",height:"100%",background:"radial-gradient(circle at 50% 40%,#1a1a2e,#0a0a14)",display:"flex",alignItems:"center",justifyContent:"center",overflow:"auto"}}>
+      <div style={{maxWidth:560,width:"100%",padding:24,textAlign:"center"}}>
+        <div style={{fontSize:64,marginBottom:16,animation:"float 3s ease-in-out infinite"}}>🏆</div>
+        <div style={{fontSize:13,fontWeight:800,color:"#ffd54f",letterSpacing:5,marginBottom:8,opacity:.7}}>GAME CONTEST 2025</div>
+        <h1 style={{fontSize:"clamp(26px,5vw,42px)",fontWeight:900,margin:"0 0 8px",background:"linear-gradient(135deg,#ffd54f,#f7931a)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>HTML 게임 콘테스트</h1>
+        <p style={{fontSize:14,color:"#64748b",fontWeight:600,margin:"0 0 20px",lineHeight:1.6}}>6명의 참가자가 심혈을 기울여 만든 게임을 평가합니다</p>
+
+        {/* Reveal Order */}
+        <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:16,padding:18,marginBottom:16,textAlign:"left"}}>
+          <div style={{fontSize:13,fontWeight:800,color:"#ffd54f",marginBottom:10}}>📋 발표 순서 설정</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+            {Object.entries(PRESETS).map(([k,v])=>(<button key={k} onClick={()=>selectPreset(k)} style={{padding:"6px 12px",borderRadius:8,border:preset===k?"1px solid #ffd54f":"1px solid rgba(255,255,255,0.08)",background:preset===k?"rgba(255,213,79,0.1)":"rgba(255,255,255,0.03)",color:preset===k?"#ffd54f":"#94a3b8",fontSize:11,fontWeight:700,cursor:"pointer"}}>{v.label}</button>))}
+            {preset==="custom"&&<span style={{padding:"6px 12px",borderRadius:8,border:"1px solid #a78bfa",background:"rgba(167,139,250,0.1)",color:"#a78bfa",fontSize:11,fontWeight:700}}>커스텀</span>}
+          </div>
+
+          {/* Order preview */}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+            {customOrder.map((step,i)=>(
+              <React.Fragment key={i}>
+                <div style={{display:"flex",gap:4,alignItems:"center",padding:"8px 12px",borderRadius:12,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",position:"relative"}}>
+                  <div style={{position:"absolute",top:-7,left:8,fontSize:9,fontWeight:800,color:"#475569",background:"#0a0a14",padding:"0 4px",borderRadius:4}}>STEP {i+1}</div>
+                  {step.map(r=>{const g=gameByRank(r);return(<div key={r} style={{display:"flex",alignItems:"center",gap:4}}><span style={{fontSize:16}}>{g.emoji}</span><span style={{fontSize:11,fontWeight:700,color:g.color}}>{g.rank}위 {g.name}</span></div>)})}
+                  <div style={{display:"flex",flexDirection:"column",gap:2,marginLeft:6}}>
+                    <button onClick={()=>moveStep(i,i-1)} disabled={i===0} style={{width:18,height:14,border:"none",borderRadius:3,background:i===0?"rgba(255,255,255,0.03)":"rgba(255,255,255,0.08)",color:i===0?"#334155":"#94a3b8",fontSize:8,cursor:i===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
+                    <button onClick={()=>moveStep(i,i+1)} disabled={i===customOrder.length-1} style={{width:18,height:14,border:"none",borderRadius:3,background:i===customOrder.length-1?"rgba(255,255,255,0.03)":"rgba(255,255,255,0.08)",color:i===customOrder.length-1?"#334155":"#94a3b8",fontSize:8,cursor:i===customOrder.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
+                  </div>
+                </div>
+                {i<customOrder.length-1&&<span style={{color:"#334155",fontSize:16}}>→</span>}
+              </React.Fragment>
+            ))}
+          </div>
+          {customOrder.some(s=>s.length>1)&&<div style={{marginTop:8,fontSize:11,color:"#a78bfa",fontWeight:600}}>⚡ 동시 공개 스텝이 포함되어 있습니다</div>}
+        </div>
+
+        {/* Start Buttons */}
+        <div style={{display:"flex",flexDirection:"column",gap:10,alignItems:"center",width:"100%"}}>
+          {/* Primary: TTS mode */}
+          <button onClick={()=>handleStart(false)} style={{width:"100%",padding:"16px 24px",borderRadius:16,border:"none",fontSize:16,fontWeight:800,background:"linear-gradient(135deg,#f7931a,#ffd54f)",color:"#0a0a14",cursor:"pointer",boxShadow:"0 10px 36px rgba(247,147,26,0.35)",animation:"btnP 2s ease-in-out infinite"}}>
+            🎬 발표 시작 (효과음 + 음성)
+          </button>
+          <div style={{fontSize:11,color:"#64748b",textAlign:"center",lineHeight:1.5}}>Tone.js 효과음 + 브라우저 TTS로 바로 발표합니다</div>
+
+          {/* Secondary: AI MC toggle */}
+          <div style={{width:"100%",marginTop:4}}>
+            <button onClick={()=>setMode(mode==="withKey"?null:"withKey")} style={{width:"100%",padding:"10px 18px",borderRadius:12,border:"1px solid rgba(255,255,255,0.08)",background:mode==="withKey"?"rgba(167,139,250,0.08)":"rgba(255,255,255,0.03)",color:mode==="withKey"?"#a78bfa":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,transition:"all .2s"}}>
+              <span>{mode==="withKey"?"▾":"▸"}</span>
+              <span>🤖 AI MC 모드 (Claude API 키 입력)</span>
+            </button>
+
+            {mode==="withKey"&&(
+              <div style={{marginTop:8,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(167,139,250,0.15)",borderRadius:14,padding:16,animation:"slideUp .3s ease"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",marginBottom:8}}>🔑 Anthropic API Key를 입력하면 Claude가 실시간 MC 멘트를 생성합니다</div>
+                <input type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder="sk-ant-api03-..." style={{width:"100%",padding:"10px 14px",borderRadius:8,border:"1px solid rgba(167,139,250,0.2)",background:"rgba(0,0,0,0.3)",color:"#e2e8f0",fontSize:13,fontFamily:"monospace",outline:"none"}}/>
+                <div style={{fontSize:10,color:"#475569",marginTop:6,marginBottom:10}}>브라우저 메모리에만 저장, 페이지 닫으면 사라짐</div>
+                <button onClick={()=>handleStart(true)} disabled={!key.trim()} style={{width:"100%",padding:"11px 24px",borderRadius:10,border:"none",fontSize:13,fontWeight:800,background:key.trim()?"linear-gradient(135deg,#7c3aed,#a78bfa)":"rgba(255,255,255,0.06)",color:key.trim()?"#fff":"#475569",cursor:key.trim()?"pointer":"default",boxShadow:key.trim()?"0 6px 20px rgba(124,58,237,0.25)":"none"}}>
+                  🎙️ AI MC 모드로 시작
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}`}</style>
+    </div>
+  );
+};
+
+/* ═══ Reveal Page (supports multi-game reveal) ═══ */
+const RevealPage=({step,phase,onReveal,onNext,sfx,tts,isLast,stepIdx,totalSteps})=>{
+  const multi=step.length>1;
+  const primary=step[0];
+  const[showDetails,setShowDetails]=useState(null);
+  const[narrations,setNarrations]=useState({});
+  const[reviews,setReviews]=useState({});
+  const[loading,setLoading]=useState({});
+
+  const hasFirst=step.some(g=>g.rank===1);
+
+  useEffect(()=>{
+    if(phase!=="revealed")return;
+    const gen=async()=>{
+      if(multi){
+        setLoading(p=>({...p,announce:true}));
+        const text=await generateMCNarration(step,"multi");
+        setLoading(p=>({...p,announce:false}));
+        const fb=step.map(g=>`${g.rank}위 ${g.name}!`).join(" 그리고 ")+"... 동시 공개입니다!";
+        const final=text||fb;
+        setNarrations(p=>({...p,announce:final}));
+        tts.speakDramatic(final);
+      }else{
+        const g=primary;
+        setLoading(p=>({...p,announce:true}));
+        const text=await generateMCNarration(g,"announce");
+        setLoading(p=>({...p,announce:false}));
+        const fb=g.rank===1?`드디어... 영광의 1위! ${g.name} 님의 ${g.game}! 총점 ${g.total}점!`:`${g.rank}위! ${g.name} 님의 ${g.game}! 총점 ${g.total}점!`;
+        setNarrations(p=>({...p,announce:text||fb}));
+        tts.speakDramatic(text||fb);
+      }
+    };gen();
+  },[phase]);
+
+  const showReview=async(g)=>{
+    setShowDetails(g.rank);sfx.clickSound();
+    if(!reviews[g.rank]){
+      setLoading(p=>({...p,[g.rank]:true}));
+      const t=await generateMCNarration(g,"review");
+      setLoading(p=>({...p,[g.rank]:false}));
+      const rv=t||g.review;
+      setReviews(p=>({...p,[g.rank]:rv}));
+      tts.speakDramatic(rv);
+    }else{tts.speakDramatic(reviews[g.rank])}
+  };
+
+  const renderCard=(g)=>{
+    const badge=g.rank<=3?["🥇","🥈","🥉"][g.rank-1]:`#${g.rank}`;
+    const rkLabel=g.rank<=3?["1st","2nd","3rd"][g.rank-1]:`${g.rank}th`;
+    const isExpanded=showDetails===g.rank;
+    return(
+      <div key={g.rank} style={{textAlign:"center",flex:multi?"1 1 280px":"none",maxWidth:multi?360:640,width:"100%"}}>
+        <div style={{fontSize:14,fontWeight:900,color:g.color,letterSpacing:5,opacity:.8,textTransform:"uppercase"}}>{rkLabel}</div>
+        <div style={{fontSize:multi?60:hasFirst?100:80,margin:"4px 0",filter:`drop-shadow(0 0 24px ${g.color}66)`}}>{g.emoji}</div>
+        <div style={{fontSize:multi?"clamp(22px,4vw,32px)":"clamp(30px,6vw,48px)",fontWeight:900,lineHeight:1.2}}><span style={{color:g.color}}>{badge}</span><span style={{color:"#fff",marginLeft:8}}>{g.name}</span></div>
+        <div style={{fontSize:multi?14:18,fontWeight:700,color:"rgba(255,255,255,0.6)",marginBottom:4}}>{g.game}</div>
+        <div style={{fontSize:multi?28:hasFirst?48:36,fontWeight:900,color:g.color,textShadow:`0 0 24px ${g.color}44`,marginBottom:12}}>{g.total}점</div>
+        {!isExpanded?(<button onClick={e=>{e.stopPropagation();showReview(g)}} style={{padding:"8px 18px",borderRadius:10,border:`1px solid ${g.color}44`,background:"rgba(255,255,255,0.06)",color:g.color,fontSize:12,fontWeight:700,cursor:"pointer"}}>🔊 상세 평가</button>):(
+          <div style={{textAlign:"left",background:"rgba(0,0,0,0.4)",borderRadius:16,padding:18,border:"1px solid rgba(255,255,255,0.08)",animation:"slideUp .4s ease",marginTop:4}}>
+            {loading[g.rank]&&<Loader color={g.color}/>}
+            {reviews[g.rank]&&(<div style={{marginBottom:12,padding:"10px 14px",borderRadius:10,background:`${g.color}0a`,border:`1px solid ${g.color}18`}}><p style={{fontSize:13,lineHeight:1.7,color:"rgba(255,255,255,0.8)",margin:0,fontStyle:"italic"}}>"{reviews[g.rank]}"</p></div>)}
+            <ScoreBar label="완성도" value={g.scores.completeness} color={g.color} delay={0}/>
+            <ScoreBar label="몰입도" value={g.scores.immersion} color={g.accent} delay={100}/>
+            <ScoreBar label="창의성" value={g.scores.creativity} color="#a78bfa" delay={200}/>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}><span style={{fontSize:11,color:"rgba(255,255,255,0.4)",fontWeight:700}}>추가</span><span style={{fontSize:14,fontWeight:900,color:g.color}}>+{g.scores.bonus}</span></div>
+            {g.highlights.map((h,i)=>(<div key={i} style={{display:"flex",gap:6,marginTop:4,fontSize:12,color:"rgba(255,255,255,0.5)"}}><span style={{color:g.color}}>→</span>{h}</div>))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return(
+    <div style={{position:"relative",width:"100%",height:"100%",background:phase==="revealed"?(multi?primary.bg:primary.bg):"radial-gradient(circle at 50% 40%,#0d0d1a,#000)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",transition:"background 1s",overflow:"hidden",padding:24}}>
+      {hasFirst&&phase==="revealed"&&<Confetti/>}
+      {phase==="revealed"&&<div style={{position:"absolute",top:"10%",left:"50%",width:500,height:500,transform:"translateX(-50%)",borderRadius:"50%",background:`radial-gradient(circle,${primary.color}15,transparent 70%)`,pointerEvents:"none",animation:"glowP 3s ease-in-out infinite"}}/>}
+
+      {phase==="waiting"&&(<div style={{textAlign:"center",cursor:"pointer",zIndex:2}} onClick={onReveal}>
+        <div style={{fontSize:18,fontWeight:800,color:"#475569",letterSpacing:4,marginBottom:12}}>STEP {stepIdx+1}/{totalSteps}</div>
+        <div style={{fontSize:multi?80:120,marginBottom:16,opacity:.3}}>{multi?"❓❓":"❓"}</div>
+        <button style={{padding:"14px 36px",borderRadius:14,border:"none",fontSize:16,fontWeight:800,background:"linear-gradient(135deg,#f7931a,#ffd54f)",color:"#0a0a14",cursor:"pointer",boxShadow:"0 8px 30px rgba(247,147,26,0.3)",animation:"btnP 2s ease-in-out infinite"}}>{multi?`🥁 ${step.length}명 동시 공개!`:"🥁 공개하기"}</button>
+      </div>)}
+
+      {phase==="suspense"&&(<div style={{textAlign:"center",zIndex:2}}>
+        <div style={{fontSize:22,fontWeight:800,color:"#ffd54f",letterSpacing:4,marginBottom:16,animation:"pulse .6s infinite"}}>{hasFirst?"🏆 최종 공개...":"두구두구..."}</div>
+        <div style={{fontSize:70,animation:"shake .15s infinite alternate"}}>{multi?"❓❓":"❓"}</div>
+      </div>)}
+
+      {phase==="revealed"&&(
+        <div style={{zIndex:2,maxWidth:multi?800:640,width:"100%",animation:"revIn .8s cubic-bezier(.16,1,.3,1)",overflowY:"auto",maxHeight:"calc(100vh - 48px)",paddingBottom:20}}>
+          {loading.announce&&<Loader color={primary.color}/>}
+          {narrations.announce&&(<div style={{margin:"0 auto 16px",maxWidth:560,padding:"12px 18px",borderRadius:14,background:"rgba(255,255,255,0.06)",border:`1px solid ${primary.color}22`,textAlign:"center"}}><div style={{fontSize:10,fontWeight:800,color:primary.color,marginBottom:4,letterSpacing:2}}>🎙️ MC</div><p style={{fontSize:14,lineHeight:1.8,color:"rgba(255,255,255,0.85)",margin:0,fontWeight:600,fontStyle:"italic"}}>"{narrations.announce}"</p></div>)}
+
+          <div style={{display:"flex",flexWrap:"wrap",gap:20,justifyContent:"center",marginBottom:20}}>
+            {step.map(g=>renderCard(g))}
+          </div>
+
+          <div style={{textAlign:"center"}}><button onClick={e=>{e.stopPropagation();tts.stop();sfx.whoosh();onNext()}} style={{padding:"12px 28px",borderRadius:14,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.06)",color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer"}}>{isLast?"🏆 최종 결과 →":"다음 순위 →"}</button></div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes glowP{0%,100%{opacity:.6;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.1)}}
+        @keyframes shake{from{transform:rotate(-3deg) scale(1.05)}to{transform:rotate(3deg) scale(.95)}}
+        @keyframes revIn{from{opacity:0;transform:translateY(40px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        @keyframes btnP{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+      `}</style>
+    </div>
+  );
+};
+
+/* ═══ Final Page ═══ */
+const FinalPage=({sfx,tts,onRestart})=>{
+  const top3=games.filter(g=>g.rank<=3).sort((a,b)=>a.rank-b.rank);
+  const pod=[top3[1],top3[0],top3[2]];const hs=[180,240,140];const ds=[.3,0,.5];
+  const[narr,setNarr]=useState(null);const[ld,setLd]=useState(true);
+  useEffect(()=>{sfx.fanfare();generateMCNarration(null,"final").then(t=>{setLd(false);const fb="최종 결과입니다! 1위 황제성, 2위 가온, 3위 허성범! 모든 참가자 여러분 수고하셨습니다!";const f=t||fb;setNarr(f);tts.speakDramatic(f)})},[]);
+  return(
+    <div style={{position:"relative",width:"100%",height:"100%",background:"radial-gradient(ellipse at 50% 30%,#1a1500,#0a0800 50%,#000)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",overflow:"hidden",padding:24}}>
+      <Confetti/>
+      <div style={{fontSize:13,fontWeight:900,color:"#ffd54f",letterSpacing:6,marginBottom:6,opacity:.7,zIndex:2}}>FINAL RESULTS</div>
+      <h1 style={{fontSize:"clamp(26px,5vw,40px)",fontWeight:900,margin:"0 0 16px",color:"#fff",zIndex:2}}>🏆 최종 순위 🏆</h1>
+      {(ld||narr)&&(<div style={{maxWidth:520,width:"100%",margin:"0 auto 16px",padding:"12px 18px",borderRadius:14,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,213,79,0.15)",zIndex:2,textAlign:"center"}}>{ld?<Loader color="#ffd54f"/>:<><div style={{fontSize:10,fontWeight:800,color:"#ffd54f",marginBottom:4,letterSpacing:2}}>🎙️ MC</div><p style={{fontSize:13,lineHeight:1.8,color:"rgba(255,255,255,0.85)",margin:0,fontWeight:600,fontStyle:"italic"}}>"{narr}"</p></>}</div>)}
+      <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:"clamp(10px,3vw,24px)",zIndex:2,marginBottom:16}}>
+        {pod.map((g,i)=>(<div key={g.name} style={{display:"flex",flexDirection:"column",alignItems:"center",animation:`pRise .8s cubic-bezier(.16,1,.3,1) ${ds[i]}s both`}}>
+          <div style={{fontSize:g.rank===1?48:36,marginBottom:4,filter:`drop-shadow(0 0 16px ${g.color}66)`}}>{g.emoji}</div>
+          <div style={{fontSize:g.rank===1?22:18,fontWeight:900,color:g.color}}>{["🥇","🥈","🥉"][g.rank-1]}</div>
+          <div style={{fontSize:g.rank===1?18:14,fontWeight:900,color:"#fff"}}>{g.name}</div>
+          <div style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",marginBottom:4,textAlign:"center",maxWidth:110}}>{g.game}</div>
+          <div style={{fontSize:g.rank===1?22:18,fontWeight:900,color:g.color,marginBottom:6}}>{g.total}점</div>
+          <div style={{width:"clamp(70px,14vw,120px)",height:hs[i],borderRadius:"12px 12px 0 0",background:`linear-gradient(180deg,${g.color}44,${g.color}11)`,border:`1px solid ${g.color}33`,borderBottom:"none",display:"flex",alignItems:"flex-start",justifyContent:"center",paddingTop:12,fontSize:28,fontWeight:900,color:g.color}}>{g.rank}</div>
+        </div>))}
+      </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",zIndex:2,marginBottom:14}}>
+        {[...games].sort((a,b)=>a.rank-b.rank).map(g=>(<div key={g.name} style={{padding:"4px 10px",borderRadius:8,background:"rgba(255,255,255,0.04)",border:`1px solid ${g.color}22`,display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:12}}>{g.emoji}</span><span style={{fontSize:11,fontWeight:800,color:g.color}}>{g.rank}위</span><span style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>{g.name}</span><span style={{fontSize:11,fontWeight:900,color:"rgba(255,255,255,0.8)"}}>{g.total}</span></div>))}
+      </div>
+      <button onClick={()=>{tts.stop();sfx.stopBGM();onRestart()}} style={{padding:"10px 24px",borderRadius:12,border:"none",fontSize:13,fontWeight:800,background:"linear-gradient(135deg,#f7931a,#ffd54f)",color:"#0a0a14",cursor:"pointer",zIndex:2}}>🔄 처음부터 다시 보기</button>
+      <style>{`@keyframes pRise{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:translateY(0)}}`}</style>
+    </div>
+  );
+};
+
+/* ═══ Main App ═══ */
+function App(){
+  const[revealOrder,setRevealOrder]=useState(null);
+  const[pageIndex,setPageIndex]=useState(0);
+  const[phases,setPhases]=useState([]);
+  const sfx=useSFX();
+  const tts=useTTS();
+
+  const order=revealOrder||[];
+  const stepIdx=pageIndex-1;
+  const currentStep=order[stepIdx]?order[stepIdx].map(gameByRank):null;
+
+  const handleSetupComplete=(ord)=>{
+    setRevealOrder(ord);
+    setPhases(ord.map(()=>"waiting"));
+    setPageIndex(1);
+  };
+
+  const handleReveal=useCallback(async()=>{
+    if(!currentStep)return;
+    const idx=stepIdx;
+    setPhases(p=>{const n=[...p];n[idx]="suspense";return n});
+    const hasFirst=currentStep.some(g=>g.rank===1);
+    const hasTop3=currentStep.some(g=>g.rank<=3);
+    const rollDur=hasFirst?2.5:hasTop3?1.2:.7;
+    await sfx.tensionRoll(rollDur);
+    setTimeout(()=>{
+      if(hasFirst)sfx.fanfare();else sfx.revealChime(Math.min(...currentStep.map(g=>g.rank)));
+      setPhases(p=>{const n=[...p];n[idx]="revealed";return n});
+    },rollDur*1000+300);
+  },[currentStep,stepIdx,sfx]);
+
+  const handleNext=()=>{tts.stop();sfx.whoosh();setPageIndex(p=>p+1)};
+  const handleRestart=()=>{setRevealOrder(null);setPageIndex(0);setPhases([])};
+
+  if(!revealOrder)return<SetupPage onComplete={handleSetupComplete} sfx={sfx}/>;
+
+  const totalSteps=order.length;
+  const isOnRevealPages=pageIndex>=1&&pageIndex<=totalSteps;
+  const isFinal=pageIndex>totalSteps;
+
+  return(
+    <div style={{width:"100%",height:"100%",overflow:"hidden",position:"relative"}}>
+      {isOnRevealPages&&(<div style={{position:"absolute",top:14,left:"50%",transform:"translateX(-50%)",zIndex:20,display:"flex",gap:5}}>
+        {order.map((_,i)=>(<div key={i} style={{width:i===stepIdx?24:8,height:8,borderRadius:4,background:phases[i]==="revealed"?"#ffd54f":i<=stepIdx?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.08)",transition:"all .4s"}}/>))}
+      </div>)}
+      {tts.speaking&&<button onClick={()=>tts.stop()} style={{position:"absolute",top:14,right:14,zIndex:20,padding:"5px 12px",borderRadius:8,border:"1px solid rgba(255,80,80,0.3)",background:"rgba(255,80,80,0.12)",color:"#ff6b6b",fontSize:10,fontWeight:700,cursor:"pointer"}}>⏹ 음성 정지</button>}
+
+      {isOnRevealPages&&currentStep&&<RevealPage key={stepIdx} step={currentStep} phase={phases[stepIdx]} onReveal={handleReveal} onNext={handleNext} sfx={sfx} tts={tts} isLast={pageIndex===totalSteps} stepIdx={stepIdx} totalSteps={totalSteps}/>}
+      {isFinal&&<FinalPage sfx={sfx} tts={tts} onRestart={handleRestart}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

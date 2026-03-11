@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>귀신 퇴치 게임</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: radial-gradient(circle at top, #1d2340 0%, #090b14 55%, #02030a 100%);
+      color: #f5f7ff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .game-wrap {
+      width: min(980px, 100%);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .title-box h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+    }
+
+    .title-box p {
+      margin: 6px 0 0;
+      color: #c7cffd;
+      font-size: 0.95rem;
+    }
+
+    .stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 10px 14px;
+      min-width: 110px;
+    }
+
+    .stat .label {
+      display: block;
+      font-size: 0.75rem;
+      color: #c8d0ff;
+      margin-bottom: 4px;
+    }
+
+    .stat .value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 0 20px 18px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(1px) scale(0.98); }
+
+    .primary {
+      background: linear-gradient(135deg, #8ef0ff, #5a9bff);
+      color: #08101f;
+    }
+
+    .secondary {
+      background: rgba(255,255,255,0.12);
+      color: #eef2ff;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .arena {
+      position: relative;
+      height: 560px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 15% 18%, rgba(255,255,255,0.08), transparent 18%),
+        radial-gradient(circle at 75% 22%, rgba(160,220,255,0.1), transparent 16%),
+        radial-gradient(circle at 50% 78%, rgba(255,255,255,0.05), transparent 20%),
+        linear-gradient(to bottom, rgba(15,20,40,0.92), rgba(2,4,10,0.98));
+      cursor: crosshair;
+    }
+
+    .mist {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.05), transparent 24%),
+        radial-gradient(circle at 70% 70%, rgba(255,255,255,0.05), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(255,255,255,0.07), transparent 35%);
+      animation: fogMove 8s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes fogMove {
+      from { transform: translateX(-12px) translateY(0); }
+      to { transform: translateX(12px) translateY(-8px); }
+    }
+
+    .ghost {
+      position: absolute;
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      user-select: none;
+      transform-origin: center;
+      animation: floatGhost 1.7s ease-in-out infinite;
+      filter: drop-shadow(0 0 10px rgba(191, 236, 255, 0.45));
+    }
+
+    .ghost.hit {
+      animation: vanish 0.28s ease forwards;
+    }
+
+    @keyframes floatGhost {
+      0% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-8px) scale(1.05); }
+      100% { transform: translateY(0px) scale(1); }
+    }
+
+    @keyframes vanish {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.7); opacity: 0; }
+    }
+
+    .crosshair {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border: 2px solid rgba(142, 240, 255, 0.85);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      box-shadow: 0 0 12px rgba(142, 240, 255, 0.35);
+    }
+
+    .crosshair::before,
+    .crosshair::after {
+      content: "";
+      position: absolute;
+      background: rgba(142, 240, 255, 0.9);
+    }
+
+    .crosshair::before {
+      left: 50%; top: -8px;
+      width: 2px; height: 50px;
+      transform: translateX(-50%);
+    }
+
+    .crosshair::after {
+      top: 50%; left: -8px;
+      width: 50px; height: 2px;
+      transform: translateY(-50%);
+    }
+
+    .flash {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 0 25px 10px rgba(142,240,255,0.55);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      animation: pop 0.25s ease forwards;
+    }
+
+    @keyframes pop {
+      from { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+      to { opacity: 0; transform: translate(-50%, -50%) scale(2.2); }
+    }
+
+    .message {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 4, 10, 0.55);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .message.show { opacity: 1; }
+
+    .message-card {
+      background: rgba(10, 15, 30, 0.88);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      padding: 28px;
+      width: min(90%, 420px);
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+    }
+
+    .message-card h2 {
+      margin: 0 0 10px;
+      font-size: 1.8rem;
+    }
+
+    .message-card p {
+      margin: 8px 0;
+      color: #d9e0ff;
+      line-height: 1.5;
+    }
+
+    .footer-tip {
+      padding: 14px 20px 20px;
+      color: #c7cffd;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 640px) {
+      .arena { height: 460px; }
+      .ghost { width: 56px; height: 56px; font-size: 40px; }
+      .controls { padding-bottom: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrap">
+    <div class="topbar">
+      <div class="title-box">
+        <h1>귀신 퇴치 게임</h1>
+        <p>숨어 나타나는 귀신을 클릭해서 제한 시간 안에 최대한 많이 퇴치하세요.</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="label">점수</span><span class="value" id="score">0</span></div>
+        <div class="stat"><span class="label">남은 시간</span><span class="value" id="time">30</span></div>
+        <div class="stat"><span class="label">최고 점수</span><span class="value" id="best">0</span></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="primary" id="startBtn">게임 시작</button>
+      <button class="secondary" id="resetBtn">기록 초기화</button>
+    </div>
+
+    <div class="arena" id="arena">
+      <div class="mist"></div>
+      <div class="crosshair" id="crosshair"></div>
+      <div class="message show" id="message">
+        <div class="message-card">
+          <h2>퇴마 준비 완료</h2>
+          <p>게임 시작을 누르면 귀신이 나타납니다.</p>
+          <p>귀신을 클릭할 때마다 점수가 올라갑니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-tip">팁: 귀신은 점점 더 빨라집니다. 마우스를 움직여 조준하고 빠르게 클릭해 보세요.</div>
+  </div>
+
+  <script>
+    const arena = document.getElementById('arena');
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const bestEl = document.getElementById('best');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const message = document.getElementById('message');
+    const crosshair = document.getElementById('crosshair');
+
+    let score = 0;
+    let timeLeft = 30;
+    let gameRunning = false;
+    let countdownTimer = null;
+    let spawnTimer = null;
+    let ghostId = 0;
+    let bestScore = Number(localStorage.getItem('ghost-busting-best') || 0);
+    bestEl.textContent = bestScore;
+
+    function updateHud() {
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      bestEl.textContent = bestScore;
+    }
+
+    function showMessage(title, lines) {
+      const html = `
+        <div class="message-card">
+          <h2>${title}</h2>
+          ${lines.map(line => `<p>${line}</p>`).join('')}
+        </div>`;
+      message.innerHTML = html;
+      message.classList.add('show');
+    }
+
+    function hideMessage() {
+      message.classList.remove('show');
+    }
+
+    function clearGhosts() {
+      document.querySelectorAll('.ghost').forEach(g => g.remove());
+    }
+
+    function createFlash(x, y) {
+      const flash = document.createElement('div');
+      flash.className = 'flash';
+      flash.style.left = `${x}px`;
+      flash.style.top = `${y}px`;
+      arena.appendChild(flash);
+      setTimeout(() => flash.remove(), 250);
+    }
+
+    function randomBetween(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function spawnGhost() {
+      if (!gameRunning) return;
+
+      const ghost = document.createElement('div');
+      ghost.className = 'ghost';
+      ghost.textContent = '👻';
+      ghost.dataset.id = String(++ghostId);
+
+      const size = window.innerWidth < 640 ? 56 : 64;
+      const maxX = arena.clientWidth - size;
+      const maxY = arena.clientHeight - size - 20;
+      const x = randomBetween(10, maxX - 10);
+      const y = randomBetween(20, Math.max(40, maxY));
+
+      ghost.style.left = `${x}px`;
+      ghost.style.top = `${y}px`;
+      ghost.style.animationDuration = `${randomBetween(1.1, 2.0)}s`;
+
+      ghost.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!gameRunning || ghost.classList.contains('hit')) return;
+        ghost.classList.add('hit');
+        score += 1;
+        if (score > bestScore) {
+          bestScore = score;
+          localStorage.setItem('ghost-busting-best', String(bestScore));
+        }
+        updateHud();
+        const rect = arena.getBoundingClientRect();
+        createFlash(e.clientX - rect.left, e.clientY - rect.top);
+        setTimeout(() => ghost.remove(), 260);
+      });
+
+      arena.appendChild(ghost);
+
+      const lifetime = Math.max(550, 1600 - score * 18);
+      setTimeout(() => {
+        if (ghost.parentNode && !ghost.classList.contains('hit')) {
+          ghost.remove();
+        }
+      }, lifetime);
+    }
+
+    function scheduleSpawn() {
+      if (!gameRunning) return;
+      spawnGhost();
+      const nextDelay = Math.max(240, 760 - score * 8);
+      spawnTimer = setTimeout(scheduleSpawn, nextDelay);
+    }
+
+    function endGame() {
+      gameRunning = false;
+      clearInterval(countdownTimer);
+      clearTimeout(spawnTimer);
+      clearGhosts();
+      updateHud();
+
+      const praise = score >= 35
+        ? '엄청난 실력입니다. 마을의 평화가 지켜졌습니다.'
+        : score >= 20
+        ? '훌륭합니다. 많은 귀신을 퇴치했습니다.'
+        : '좋은 시작입니다. 다시 도전해서 더 높은 점수를 노려보세요.';
+
+      showMessage('게임 종료', [
+        `최종 점수: <strong>${score}</strong>`,
+        `최고 점수: <strong>${bestScore}</strong>`,
+        praise
+      ]);
+    }
+
+    function startGame() {
+      clearInterval(countdownTimer);
+      clearTimeout(spawnTimer);
+      clearGhosts();
+
+      score = 0;
+      timeLeft = 30;
+      gameRunning = true;
+      updateHud();
+      hideMessage();
+      scheduleSpawn();
+
+      countdownTimer = setInterval(() => {
+        timeLeft -= 1;
+        updateHud();
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    arena.addEventListener('mousemove', (e) => {
+      const rect = arena.getBoundingClientRect();
+      crosshair.style.left = `${e.clientX - rect.left}px`;
+      crosshair.style.top = `${e.clientY - rect.top}px`;
+    });
+
+    arena.addEventListener('mouseenter', () => {
+      crosshair.style.opacity = '1';
+    });
+
+    arena.addEventListener('mouseleave', () => {
+      crosshair.style.opacity = '0';
+    });
+
+    arena.addEventListener('click', (e) => {
+      if (!gameRunning) return;
+      const rect = arena.getBoundingClientRect();
+      createFlash(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    startBtn.addEventListener('click', startGame);
+
+    resetBtn.addEventListener('click', () => {
+      bestScore = 0;
+      localStorage.removeItem('ghost-busting-best');
+      updateHud();
+      showMessage('기록 초기화 완료', [
+        '최고 점수가 초기화되었습니다.',
+        '게임 시작을 눌러 다시 도전하세요.'
+      ]);
+    });
+
+    updateHud();
+  </script>
+</body>
+</html>

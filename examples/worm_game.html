@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>귀여운 지렁이 게임</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Arial Rounded MT Bold", "Malgun Gothic", Arial, sans-serif;
+      background: linear-gradient(180deg, #fff7fb 0%, #ffeef7 45%, #ffe4f1 100%);
+      color: #6b4b5e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .wrap {
+      width: min(96vw, 920px);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      font-size: 42px;
+      color: #ff5fa2;
+      text-shadow: 0 2px 0 #fff;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding: 16px 20px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 3px solid #ffd3e6;
+      border-radius: 20px;
+      box-shadow: 0 10px 24px rgba(255, 130, 180, 0.18);
+    }
+
+    .info {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ff5fa2;
+    }
+
+    button {
+      border: 0;
+      background: linear-gradient(180deg, #ff9bc5 0%, #ff6fac 100%);
+      color: white;
+      padding: 14px 22px;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(255, 111, 172, 0.3);
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      background: #fffafc;
+      border: 4px solid #ffd3e6;
+      border-radius: 28px;
+      display: block;
+      box-shadow: 0 14px 30px rgba(255, 130, 180, 0.2);
+    }
+
+    .guide {
+      margin-top: 18px;
+      color: #8b6a7c;
+      font-size: 19px;
+      line-height: 1.8;
+      background: rgba(255,255,255,0.8);
+      border: 3px solid #ffe0ec;
+      border-radius: 18px;
+      padding: 16px 20px;
+    }
+
+    .overlay {
+      position: relative;
+    }
+
+    .message {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(255, 240, 247, 0.72);
+      border-radius: 28px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .message.show {
+      opacity: 1;
+    }
+
+    .message strong {
+      font-size: 48px;
+      color: #ff4f97;
+    }
+
+    .message span {
+      font-size: 24px;
+      color: #8a5a73;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🐛 귀여운 지렁이 게임</h1>
+
+    <div class="topbar">
+      <div class="info">💖 점수: <span id="score">0</span></div>
+      <button id="restartBtn">다시 시작</button>
+    </div>
+
+    <div class="overlay">
+      <canvas id="game" width="720" height="720"></canvas>
+      <div id="message" class="message show">
+        <strong>시작!</strong>
+        <span>방향키 또는 WASD로 움직이세요</span>
+      </div>
+    </div>
+
+    <div class="guide">
+      ☁️ CB-MapUI 이미지 아이콘을 먹이로 활용했어요.<br />
+      AWS, Azure, GCP 같은 로고를 먹으며 귀여운 지렁이를 키워 보세요.<br />
+      손박사 얼굴이 지렁이 머리로 등장합니다.
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const restartBtn = document.getElementById('restartBtn');
+    const messageEl = document.getElementById('message');
+
+    const gridSize = 36;
+    const tileCount = canvas.width / gridSize;
+    const rawBase = 'https://raw.githubusercontent.com/seokho-son/cb-mapui/main/img/';
+
+    const spriteFiles = [
+      'aws.png','azure.png','gcp.png','alibaba.png','ibm.png','kt.png','ncp.png','nhn.png','tencent.png','cloudit.png',
+      'iconK8s.png','iconVm.png','iconVnet.png','iconVPN.png','iconNlb.png','iconSG.png','iconKey.png'
+    ];
+
+    const sprites = {};
+
+    const headImage = new Image();
+    headImage.crossOrigin = 'anonymous';
+    headImage.src = 'https://raw.githubusercontent.com/seokho-son/seokho-son.github.io/master/assets/img/seokho.jpg';
+
+    const defaultWorm = [
+      { x: 10, y: 10 },
+      { x: 9, y: 10 },
+      { x: 8, y: 10 }
+    ];
+
+    let worm = cloneWorm(defaultWorm);
+    let food = { x: 5, y: 5 };
+    let dx = 1;
+    let dy = 0;
+    let score = 0;
+    let gameOver = false;
+    let started = false;
+    let loopId = null;
+    let speed = 120;
+    let foodSpriteKey = null;
+    let spritesReady = false;
+
+    /* =========================
+       강렬한 이펙트 시스템
+    ========================= */
+
+    const particles = [];
+    const rings = [];
+    let screenFlash = 0;
+
+    function cloneWorm(source){
+      return source.map(s=>({x:s.x,y:s.y}));
+    }
+
+    function createEatEffect(x,y){
+      const cx = x*gridSize + gridSize/2;
+      const cy = y*gridSize + gridSize/2;
+
+      // 화려한 파티클
+      for(let i=0;i<40;i++){
+        particles.push({
+          x:cx,
+          y:cy,
+          vx:(Math.random()-0.5)*12,
+          vy:(Math.random()-0.5)*12,
+          life:40+Math.random()*20,
+          size:4+Math.random()*6,
+          color:`hsl(${Math.random()*360},90%,65%)`
+        });
+      }
+
+      // 충격파 링
+      rings.push({
+        x:cx,
+        y:cy,
+        radius:10,
+        life:30
+      });
+
+      // 화면 플래시
+      screenFlash = 10;
+    }
+
+    function updateEffects(){
+      for(let i=particles.length-1;i>=0;i--){
+        const p=particles[i];
+        p.x+=p.vx;
+        p.y+=p.vy;
+        p.life--;
+        p.vx*=0.94;
+        p.vy*=0.94;
+        if(p.life<=0) particles.splice(i,1);
+      }
+
+      for(let i=rings.length-1;i>=0;i--){
+        const r=rings[i];
+        r.radius+=6;
+        r.life--;
+        if(r.life<=0) rings.splice(i,1);
+      }
+
+      if(screenFlash>0) screenFlash--;
+    }
+
+    function drawEffects(){
+
+      // 파티클
+      particles.forEach(p=>{
+        ctx.fillStyle=p.color;
+        ctx.globalAlpha=p.life/60;
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+        ctx.fill();
+      });
+
+      ctx.globalAlpha=1;
+
+      // 링
+      rings.forEach(r=>{
+        ctx.strokeStyle=`rgba(255,120,200,${r.life/30})`;
+        ctx.lineWidth=6;
+        ctx.beginPath();
+        ctx.arc(r.x,r.y,r.radius,0,Math.PI*2);
+        ctx.stroke();
+      });
+
+      // 화면 플래시
+      if(screenFlash>0){
+        ctx.fillStyle=`rgba(255,255,255,${screenFlash/20})`;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+      }
+    }
+
+    function safeRoundRect(x,y,w,h,r){
+      if(ctx.roundRect){ctx.roundRect(x,y,w,h,r);return}
+      ctx.moveTo(x+r,y);
+      ctx.lineTo(x+w-r,y);
+      ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+      ctx.lineTo(x+w,y+h-r);
+      ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+      ctx.lineTo(x+r,y+h);
+      ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+      ctx.lineTo(x,y+r);
+      ctx.quadraticCurveTo(x,y,x+r,y);
+    }
+
+    function loadImage(name){
+      return new Promise(resolve=>{
+        const img=new Image();
+        img.crossOrigin='anonymous';
+        img.onload=()=>resolve({name,img,ok:true});
+        img.onerror=()=>resolve({name,img:null,ok:false});
+        img.src=rawBase+name;
+      });
+    }
+
+    async function preloadSprites(){
+      const results=await Promise.all(spriteFiles.map(loadImage));
+      results.forEach(({name,img,ok})=>{if(ok) sprites[name]=img});
+      spritesReady=true;
+      resetGame();
+    }
+
+    function pickFoodSprite(){
+      const available=spriteFiles.filter(n=>sprites[n]);
+      if(!available.length) return null;
+      return available[Math.floor(Math.random()*available.length)];
+    }
+
+    function isCellOnWorm(cell,target=worm){
+      return target.some(s=>s && s.x===cell.x && s.y===cell.y);
+    }
+
+    function randomFoodPosition(target=worm){
+      let f=null;
+      let guard=0;
+      while((!f||isCellOnWorm(f,target))&&guard<1000){
+        f={x:Math.floor(Math.random()*tileCount),y:Math.floor(Math.random()*tileCount)};
+        guard++;
+      }
+      return f||{x:0,y:0};
+    }
+
+    function resetGame(){
+      worm=cloneWorm(defaultWorm);
+      dx=1;dy=0;
+      score=0;
+      gameOver=false;
+      started=false;
+      speed=120;
+      food=randomFoodPosition(worm);
+      foodSpriteKey=pickFoodSprite();
+
+      particles.length=0;
+      rings.length=0;
+
+      scoreEl.textContent=score;
+      showMessage('시작!','CB‑MapUI 아이콘을 먹어 보세요');
+
+      if(loopId) clearTimeout(loopId);
+
+      draw();
+      gameLoop();
+    }
+
+    function gameLoop(){
+      if(!gameOver && started && spritesReady){
+        update();
+      }
+
+      updateEffects();
+      draw();
+
+      loopId=setTimeout(gameLoop,speed);
+    }
+
+    function update(){
+      const head={x:worm[0].x+dx,y:worm[0].y+dy};
+
+      if(head.x<0||head.y<0||head.x>=tileCount||head.y>=tileCount||isCellOnWorm(head,worm)){
+        gameOver=true;
+        showMessage('앗!','지렁이가 쿵 했어요');
+        return;
+      }
+
+      worm.unshift(head);
+
+      if(food && head.x===food.x && head.y===food.y){
+        score+=10;
+        scoreEl.textContent=score;
+
+        createEatEffect(food.x,food.y);
+
+        food=randomFoodPosition(worm);
+        foodSpriteKey=pickFoodSprite();
+        speed=Math.max(60,speed-4);
+      }else{
+        worm.pop();
+      }
+    }
+
+    function drawBackground(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      for(let y=0;y<tileCount;y++){
+        for(let x=0;x<tileCount;x++){
+          ctx.fillStyle=(x+y)%2===0?'#fff8fc':'#fff0f7';
+          ctx.fillRect(x*gridSize,y*gridSize,gridSize,gridSize);
+        }
+      }
+    }
+
+    function drawFood(){
+      const x=food.x*gridSize;
+      const y=food.y*gridSize;
+      const sprite=foodSpriteKey?sprites[foodSpriteKey]:null;
+
+      ctx.save();
+      ctx.fillStyle='#fff';
+      ctx.beginPath();
+      safeRoundRect(x+2,y+2,gridSize-4,gridSize-4,10);
+      ctx.fill();
+      ctx.strokeStyle='#ffd3e6';
+      ctx.lineWidth=3;
+      ctx.stroke();
+
+      if(sprite){
+        ctx.drawImage(sprite,x+4,y+4,gridSize-8,gridSize-8);
+      }
+
+      ctx.restore();
+    }
+
+    function drawHeadFace(hx,hy){
+      const cx=hx+gridSize/2;
+      const cy=hy+gridSize/2;
+      const r=gridSize*0.48;
+
+      if(headImage.complete && headImage.naturalWidth>0){
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.clip();
+        ctx.drawImage(headImage,hx-3,hy-3,gridSize+6,gridSize+6);
+        ctx.restore();
+
+        ctx.strokeStyle='#ff6fa9';
+        ctx.lineWidth=3;
+        ctx.beginPath();
+        ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.stroke();
+      }
+    }
+
+    function drawWorm(){
+      worm.slice(1).forEach(s=>{
+        const x=s.x*gridSize+gridSize/2;
+        const y=s.y*gridSize+gridSize/2;
+
+        ctx.fillStyle='#ffb3d1';
+        ctx.beginPath();
+        ctx.arc(x,y,gridSize*0.34,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.strokeStyle='#ff94bf';
+        ctx.lineWidth=3;
+        ctx.stroke();
+      });
+
+      drawHeadFace(worm[0].x*gridSize,worm[0].y*gridSize);
+    }
+
+    function draw(){
+      drawBackground();
+      drawFood();
+      drawWorm();
+      drawEffects();
+
+      if(!started && !gameOver){
+        ctx.fillStyle='rgba(255,255,255,0.18)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+      }
+    }
+
+    function showMessage(title,text){
+      messageEl.innerHTML=`<strong>${title}</strong><span>${text}</span>`;
+      messageEl.classList.add('show');
+    }
+
+    function hideMessage(){
+      messageEl.classList.remove('show');
+    }
+
+    function changeDirection(key){
+      if(gameOver||!spritesReady) return;
+
+      const map={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]};
+      if(!(key in map)) return;
+
+      const [nx,ny]=map[key];
+      if(dx+nx===0 && dy+ny===0) return;
+
+      dx=nx; dy=ny;
+
+      if(!started){
+        started=true;
+        hideMessage();
+      }
+    }
+
+    function runSelfTests(){
+      const tests=[];
+
+      function test(name,fn){try{fn();tests.push({name,ok:true});}catch(e){tests.push({name,ok:false,error:e});}}
+      function assert(c,m){if(!c) throw new Error(m)}
+
+      test('기본 지렁이 길이는 3이다',()=>{
+        const w=cloneWorm(defaultWorm);
+        assert(w.length===3,'지렁이 길이 오류');
+      });
+
+      test('이펙트 생성',()=>{
+        const before=particles.length;
+        createEatEffect(5,5);
+        assert(particles.length>before,'이펙트 생성 실패');
+      });
+
+      const failed=tests.filter(t=>!t.ok);
+      if(failed.length) console.error('Self tests failed',failed);
+      else console.info('Self tests passed',tests.map(t=>t.name));
+    }
+
+    document.addEventListener('keydown',e=>changeDirection(e.key));
+
+    restartBtn.addEventListener('click',()=>{
+      if(spritesReady) resetGame();
+    });
+
+    runSelfTests();
+    draw();
+    preloadSprites();
+  </script>
+</body>
+</html>

@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💰 금융 대전쟁</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+:root{--bg:#0a0a1a;--gold:#ffd700;--green:#00e676;--red:#ff1744;--blue:#2979ff;--purple:#aa00ff;--cyan:#00e5ff;--white:#eef}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Press Start 2P',monospace;color:var(--white);display:flex;justify-content:center;align-items:center;min-height:100vh;overflow:hidden;user-select:none}
+#app{display:flex;flex-direction:row;align-items:stretch;gap:0;animation:bootUp .6s ease}
+@keyframes bootUp{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+.game-wrap{position:relative;border:1px solid rgba(255,215,0,0.15);border-radius:8px 0 0 8px;overflow:hidden;box-shadow:0 0 60px rgba(255,215,0,0.05),inset 0 0 40px rgba(0,0,0,0.5);flex-shrink:0}
+canvas{display:block}
+.side-hud{width:200px;background:rgba(10,10,30,0.97);border:1px solid rgba(255,215,0,0.1);border-left:none;border-radius:0 8px 8px 0;padding:16px 12px;display:flex;flex-direction:column;gap:12px;flex-shrink:0}
+.hud-block{background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.08);border-radius:8px;padding:10px 12px}
+.hud-label{color:rgba(255,255,255,0.3);font-size:8px;letter-spacing:1.5px;margin-bottom:5px;text-transform:uppercase}
+.hud-val{font-size:18px;color:var(--green);text-shadow:0 0 10px rgba(0,230,118,0.3)}
+.hud-val.gold{color:var(--gold);text-shadow:0 0 10px rgba(255,215,0,0.4)}
+.hud-val.red{color:var(--red);text-shadow:0 0 10px rgba(255,23,68,0.3)}
+.hud-lives{display:flex;gap:4px;margin-top:2px}.hud-lives span{font-size:16px}
+.hud-ticker{font-size:7px;line-height:1.7;color:rgba(255,255,255,0.25);border-top:1px solid rgba(255,215,0,0.08);padding-top:8px;margin-top:4px}
+.hud-ticker .up{color:#00e676}.hud-ticker .dn{color:#ff1744}
+.hud-spacer{flex:1}
+.hud-hint{font-size:7px;color:rgba(255,255,255,0.18);line-height:1.8}.hud-hint b{color:rgba(255,255,255,0.3)}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(5,5,20,0.94);backdrop-filter:blur(4px);z-index:10;cursor:pointer}
+.overlay.hidden{display:none}
+.overlay .title{font-size:32px;background:linear-gradient(135deg,#ffd700,#00e676,#2979ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.overlay .sub{font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:20px}
+.overlay .prompt{font-size:11px;color:rgba(255,255,255,0.3);animation:blink 1s step-end infinite}
+.overlay .emoji{font-size:52px;margin-bottom:10px}
+.overlay .sf{font-size:20px;color:var(--gold);text-shadow:0 0 12px rgba(255,215,0,0.5);margin:10px 0}
+.overlay .hf{font-size:10px;color:var(--green)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.touch-controls{display:none;width:100%;padding:8px 16px;gap:8px;flex-direction:row;justify-content:space-between;align-items:center;position:fixed;bottom:0;left:0;right:0;background:rgba(5,5,20,0.9);z-index:50}
+.touch-lr{display:flex;gap:8px}
+.tbtn{width:68px;height:56px;border:1px solid rgba(255,215,0,0.12);border-radius:10px;background:rgba(255,215,0,0.04);color:rgba(255,255,255,0.4);font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.tbtn:active{background:rgba(255,215,0,0.15);border-color:var(--gold)}
+.tbtn.fire{width:90px;background:rgba(0,230,118,0.08);border-color:rgba(0,230,118,0.2);color:rgba(0,230,118,0.6);font-size:11px;font-family:inherit}
+@media(max-width:1080px){#app{transform:scale(calc(100vw/1080));transform-origin:center center}}
+@media(max-height:560px){#app{transform:scale(calc(100vh/560));transform-origin:center center}}
+@media(max-width:700px){.side-hud{display:none}.touch-controls{display:flex}#app{flex-direction:column;align-items:center}.game-wrap{border-radius:8px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="game-wrap" id="game-wrap">
+    <canvas id="cv"></canvas>
+    <div class="overlay" id="ov-start">
+      <div class="emoji">📈💰📉</div>
+      <div class="title">금융 대전쟁</div>
+      <div class="sub">공매도 세력을 물리치고 자산을 지켜라!</div>
+      <div class="prompt">클릭 또는 SPACE로 시작</div>
+    </div>
+    <div class="overlay hidden" id="ov-over">
+      <div class="emoji">💸</div>
+      <div class="title" style="font-size:22px">파산!</div>
+      <div class="sf" id="final-score"></div>
+      <div class="hf" id="final-hi"></div>
+      <div class="prompt">클릭 또는 SPACE로 재도전</div>
+    </div>
+    <div class="overlay hidden" id="ov-stage">
+      <div class="emoji" id="stg-emoji">📈</div>
+      <div class="title" style="font-size:18px" id="stg-title">시장 1</div>
+      <div class="sub" id="stg-sub">개미 투자자의 시작</div>
+    </div>
+  </div>
+  <div class="side-hud">
+    <div class="hud-block"><div class="hud-label">자산 (Score)</div><div class="hud-val gold" id="hud-score">$0</div></div>
+    <div class="hud-block"><div class="hud-label">최고 수익</div><div class="hud-val" id="hud-hi">$0</div></div>
+    <div class="hud-block"><div class="hud-label">시장 (Stage)</div><div class="hud-val red" id="hud-stage">1</div></div>
+    <div class="hud-block"><div class="hud-label">포트폴리오</div><div class="hud-lives" id="hud-lives"></div></div>
+    <div class="hud-block"><div class="hud-label">무기 레벨</div><div id="hud-wpn" style="font-size:9px;line-height:1.8;color:rgba(255,255,255,0.4)">📈 - 💎 - 🛡️ -</div></div>
+    <div class="hud-ticker" id="hud-ticker">
+      <div>BTC <span class="up">▲ 68,420</span></div>
+      <div>ETH <span class="up">▲ 3,890</span></div>
+      <div>KOSPI <span class="dn">▼ 2,612</span></div>
+      <div>S&P500 <span class="up">▲ 5,420</span></div>
+    </div>
+    <div class="hud-spacer"></div>
+    <div class="hud-hint"><b>← →</b> 매매<br><b>SPACE</b> 매수 공격<br><b>Z</b> 연타 매매<br><b>M</b> 음소거</div>
+  </div>
+  <div class="touch-controls">
+    <div class="touch-lr"><div class="tbtn" data-act="left">◀</div><div class="tbtn" data-act="right">▶</div></div>
+    <div class="tbtn fire" data-act="fire">BUY!</div>
+  </div>
+</div>
+<script>
+(function(){
+var W=860,H=500,cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+cv.width=W;cv.height=H;
+var PW=36,PH=30,BSPD=9,MAX_B=5;
+
+// ─── Audio System (Web Audio API) ───
+var audioCtx=null,bgmGain=null,sfxGain=null,bgmPlaying=false;
+function initAudio(){
+  if(audioCtx)return;
+  try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  bgmGain=audioCtx.createGain();bgmGain.gain.value=0.2;bgmGain.connect(audioCtx.destination);
+  sfxGain=audioCtx.createGain();sfxGain.gain.value=0.3;sfxGain.connect(audioCtx.destination)}catch(e){audioCtx=null}
+}
+function playTone(freq,dur,type,vol,dest,detune){
+  if(!audioCtx)return;
+  var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type=type||'square';o.frequency.value=freq;
+  if(detune)o.detune.value=detune;
+  g.gain.setValueAtTime(Math.min((vol||0.3),0.5),audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+(dur||0.1));
+  o.connect(g);g.connect(dest||sfxGain);
+  o.start();o.stop(audioCtx.currentTime+(dur||0.1)+0.01);
+}
+function playNoise(dur,vol){
+  if(!audioCtx)return;
+  var buf=audioCtx.createBuffer(1,audioCtx.sampleRate*(dur||0.03),audioCtx.sampleRate);
+  var d=buf.getChannelData(0);for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1);
+  var ns=audioCtx.createBufferSource(),ng=audioCtx.createGain();ns.buffer=buf;
+  ng.gain.setValueAtTime(vol||0.05,audioCtx.currentTime);ng.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+(dur||0.03));
+  ns.connect(ng);ng.connect(sfxGain);ns.start()
+}
+// ── Sound effects ──
+function sfxShoot(){playTone(1100,0.04,'square',0.1);playTone(1400,0.03,'square',0.07)}
+function sfxHit(){playTone(180,0.2,'sawtooth',0.3);playTone(120,0.25,'square',0.2);playNoise(0.15,0.12)}
+function sfxKill(){playTone(660,0.04,'square',0.15);setTimeout(function(){playTone(880,0.04,'square',0.15)},40);
+  setTimeout(function(){playTone(1100,0.06,'triangle',0.12);playNoise(0.05,0.06)},80)}
+function sfxPowerup(){
+  // Coin collect: ascending sparkle
+  var notes=[523,659,784,1047];notes.forEach(function(n,i){
+    setTimeout(function(){playTone(n,0.1,'sine',0.2);playTone(n*2,0.06,'triangle',0.08)},i*60)})}
+function sfxBossHit(){playTone(280,0.08,'sawtooth',0.18);playTone(220,0.1,'square',0.12);playNoise(0.04,0.08)}
+function sfxBossDie(){
+  for(var i=0;i<8;i++){(function(i){setTimeout(function(){
+    playTone(150+i*80,0.18,'sawtooth',0.2);playTone(80+i*40,0.22,'square',0.15);playNoise(0.1,0.08)
+  },i*100)})(i)}
+  setTimeout(function(){var v=[523,659,784,1047,1318];v.forEach(function(n,i){setTimeout(function(){playTone(n,0.15,'sine',0.2)},i*80)})},900)}
+function sfxDive(){playTone(500,0.06,'sawtooth',0.1);playTone(300,0.15,'sawtooth',0.08)}
+function sfxStageClear(){var notes=[523,659,784,1047,1318];notes.forEach(function(n,i){setTimeout(function(){playTone(n,0.15,'sine',0.2);playTone(n/2,0.12,'triangle',0.1)},i*100)})}
+function sfxGameOver(){var notes=[440,370,330,262,220];notes.forEach(function(n,i){setTimeout(function(){playTone(n,0.3,'sawtooth',0.18);playTone(n/2,0.35,'square',0.12)},i*220)})}
+function sfxLaser(){playTone(90,0.5,'sawtooth',0.12);playTone(70,0.6,'square',0.08);playNoise(0.3,0.06)}
+function sfxShield(){playTone(1200,0.06,'sine',0.15);playTone(900,0.08,'triangle',0.12)}
+function sfxLevelUp(){
+  var notes=[660,880,1100,1320];notes.forEach(function(n,i){
+    setTimeout(function(){playTone(n,0.08,'sine',0.18);playTone(n*1.5,0.05,'triangle',0.08)},i*70)})}
+
+// ─── BGM: procedural stock market chiptune ───
+var bgmInterval=null,bgmBar=0;
+function startBGM(){
+  if(!audioCtx||bgmPlaying)return;bgmPlaying=true;
+  // Cmaj: C E G  |  Am: A C E  |  F: F A C  |  G: G B D
+  var bassLine=[130.81,130.81,110,110, 87.31,87.31,98,98]; // C3 C3 A2 A2 F2 F2 G2 G2
+  var chordTones=[
+    [261.63,329.63,392],[261.63,329.63,392],
+    [220,261.63,329.63],[220,261.63,329.63],
+    [174.61,220,261.63],[174.61,220,261.63],
+    [196,246.94,293.66],[196,246.94,293.66]];
+  var melody=[523,587,659,784, 659,587,523,784, 880,784,659,523, 587,659,784,1047];
+  var arpNotes=[261.63,329.63,392,523, 220,261.63,329.63,440, 174.61,220,261.63,349.23, 196,246.94,293.66,392];
+  var beatIdx=0,melIdx=0,arpIdx=0;
+  var bpm=125,beatMs=60000/bpm/2;
+  bgmInterval=setInterval(function(){
+    if(!audioCtx||state!=='playing')return;
+    var t=audioCtx.currentTime;
+    // Bass (every beat)
+    var bo=audioCtx.createOscillator(),bg=audioCtx.createGain();
+    bo.type='square';bo.frequency.value=bassLine[beatIdx%bassLine.length];
+    bg.gain.setValueAtTime(0.07,t);bg.gain.exponentialRampToValueAtTime(0.001,t+0.18);
+    bo.connect(bg);bg.connect(bgmGain);bo.start(t);bo.stop(t+0.18);
+    // Kick drum (every 2 beats)
+    if(beatIdx%2===0){var ko=audioCtx.createOscillator(),kg=audioCtx.createGain();
+      ko.type='sine';ko.frequency.setValueAtTime(160,t);ko.frequency.exponentialRampToValueAtTime(30,t+0.1);
+      kg.gain.setValueAtTime(0.13,t);kg.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+      ko.connect(kg);kg.connect(bgmGain);ko.start(t);ko.stop(t+0.12)}
+    // Hi-hat (offbeats)
+    if(beatIdx%2===1){var buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.025,audioCtx.sampleRate);
+      var d=buf.getChannelData(0);for(var i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+      var ns=audioCtx.createBufferSource(),ng=audioCtx.createGain();ns.buffer=buf;
+      ng.gain.setValueAtTime(0.04,t);ng.gain.exponentialRampToValueAtTime(0.001,t+0.025);
+      ns.connect(ng);ng.connect(bgmGain);ns.start(t)}
+    // Chord pad (every 4 beats, sustained)
+    if(beatIdx%4===0){var cn=chordTones[Math.floor(beatIdx/4)%chordTones.length];
+      cn.forEach(function(f){var co=audioCtx.createOscillator(),cg=audioCtx.createGain();
+        co.type='triangle';co.frequency.value=f;
+        cg.gain.setValueAtTime(0.025,t);cg.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+        co.connect(cg);cg.connect(bgmGain);co.start(t);co.stop(t+0.5)})}
+    // Melody (every 4th beat)
+    if(beatIdx%4===0){var mo=audioCtx.createOscillator(),mg=audioCtx.createGain();
+      mo.type='triangle';mo.frequency.value=melody[melIdx%melody.length];
+      mg.gain.setValueAtTime(0.05,t);mg.gain.exponentialRampToValueAtTime(0.001,t+0.22);
+      mo.connect(mg);mg.connect(bgmGain);mo.start(t);mo.stop(t+0.22);melIdx++}
+    // Arpeggio (every beat, fast note)
+    if(beatIdx%1===0){var ao=audioCtx.createOscillator(),ag=audioCtx.createGain();
+      ao.type='square';ao.frequency.value=arpNotes[arpIdx%arpNotes.length];
+      ag.gain.setValueAtTime(0.02,t);ag.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+      ao.connect(ag);ag.connect(bgmGain);ao.start(t);ao.stop(t+0.08);arpIdx++}
+    beatIdx++;
+  },beatMs);
+}
+function stopBGM(){if(bgmInterval){clearInterval(bgmInterval);bgmInterval=null}bgmPlaying=false}
+var state='start',score=0,hiScore=0,lives=3,stage=1;
+var player,bullets,enemies,eBullets,particles,powerups;
+var eDir,eSpd,diveTimer,diveInt,stgTimer,invTimer,shootCD;
+var lastTime=0,gT=0,keys={};
+
+// ─── MARKET SYSTEM (chart ↔ gameplay) ─
+var chartPts=[];var tickerData=[
+  {sym:'BTC',val:68420,chg:1},{sym:'ETH',val:3890,chg:1},{sym:'KOSPI',val:2612,chg:-1},
+  {sym:'S&P500',val:5420,chg:1},{sym:'DOGE',val:0.42,chg:1},{sym:'삼전',val:72400,chg:-1}];
+
+// Market state
+var market={
+  price:1000,         // current "index" price
+  startPrice:1000,
+  trend:0,            // -1 to 1 (bear to bull)
+  momentum:0,         // rate of change
+  eventTimer:0,       // countdown to next event
+  eventDuration:0,    // active event remaining
+  eventType:null,     // 'bull'|'bear'|'crash'|'moon'|null
+  eventText:'',
+  multiplier:1,       // score multiplier
+  speedMod:1,         // enemy speed modifier
+  shootMod:1,         // enemy shoot rate modifier
+  playerSpeedMod:1,   // player bullet speed modifier
+};
+
+var MARKET_EVENTS=[
+  {type:'bull', name:'📈 호재 발생!',sub:'연준 금리 인하!',dur:400, priceDelta:0.8,scoreMult:2,speedMod:0.6,shootMod:0.5,playerSpd:1.3},
+  {type:'bull', name:'🚀 기관 매수!',sub:'블랙록 비트코인 ETF 승인!',dur:350, priceDelta:1.0,scoreMult:2.5,speedMod:0.5,shootMod:0.4,playerSpd:1.4},
+  {type:'bull', name:'💰 대량 매수!',sub:'일론 머스크 트윗!',dur:300, priceDelta:0.6,scoreMult:1.8,speedMod:0.7,shootMod:0.6,playerSpd:1.2},
+  {type:'bear', name:'📉 악재 발생!',sub:'금리 인상 발표!',dur:400, priceDelta:-0.8,scoreMult:0.5,speedMod:1.5,shootMod:2,playerSpd:0.8},
+  {type:'bear', name:'🏛️ 규제 강화!',sub:'SEC 소송 제기!',dur:350, priceDelta:-0.6,scoreMult:0.6,speedMod:1.4,shootMod:1.8,playerSpd:0.85},
+  {type:'bear', name:'💸 투매 발생!',sub:'고래 대량 매도!',dur:300, priceDelta:-0.7,scoreMult:0.5,speedMod:1.6,shootMod:1.5,playerSpd:0.9},
+  {type:'crash',name:'💥 시장 대폭락!',sub:'블랙 먼데이!',dur:500, priceDelta:-2.0,scoreMult:0.3,speedMod:2.0,shootMod:3,playerSpd:0.7},
+  {type:'moon', name:'🌙 TO THE MOON!',sub:'비트코인 신고가!',dur:500, priceDelta:2.0,scoreMult:3,speedMod:0.4,shootMod:0.3,playerSpd:1.5},
+];
+
+function initBg(){chartPts=[];market.price=1000;market.startPrice=1000;market.trend=0;market.momentum=0;market.eventTimer=15000;market.eventDuration=0;market.eventType=null;market.multiplier=1;market.speedMod=1;market.shootMod=1;market.playerSpeedMod=1;market.combo=0;market.comboCooldown=0;market.maxPrice=1000;market.crashCount=0;
+  for(var i=0;i<80;i++)chartPts.push(H*.5)}
+
+function marketPump(amount){
+  // Called on kills, powerups — pushes price UP
+  market.momentum+=amount;
+  market.combo++;market.comboCooldown=1500;
+  // Combo multiplier: consecutive kills = bigger pumps
+  if(market.combo>=3)market.momentum+=amount*.2;
+  if(market.combo>=8)market.momentum+=amount*.3;
+}
+function marketDump(amount){
+  // Called on player hit, enemy dive — pushes price DOWN
+  market.momentum-=amount;
+  market.combo=0;
+}
+
+function updateMarket(dt){
+  // Combo decay
+  market.comboCooldown-=dt;
+  if(market.comboCooldown<=0){market.combo=Math.max(0,market.combo-1);market.comboCooldown=800}
+
+  // Momentum naturally decays toward 0 (regression to mean)
+  market.momentum*=.985;
+  // Small random noise
+  market.momentum+=(Math.random()-.5)*.003;
+  market.momentum=Math.max(-.2,Math.min(.2,market.momentum));
+
+  // Trend follows momentum
+  market.trend+=(market.momentum-market.trend)*.03;
+  market.trend=Math.max(-1,Math.min(1,market.trend));
+
+  // Price follows trend directly
+  market.price+=market.trend*3+market.momentum*8+(Math.random()-.5)*.5;
+  market.price=Math.max(50,market.price);
+  if(market.price>market.maxPrice)market.maxPrice=market.price;
+
+  // ── THE KEY: chart position = difficulty & rewards ──
+  var bullRatio=Math.max(0,Math.min(1,(market.trend+1)/2)); // 0=full bear, 1=full bull
+
+  // Bull market: player is rewarded
+  //   - higher score multiplier
+  //   - faster player bullets
+  //   - enemies slower & shoot less
+  // Bear market: player is punished
+  //   - lower score multiplier
+  //   - slower player bullets
+  //   - enemies faster & shoot more
+
+  // Smooth modifiers (not stepped events)
+  market.multiplier=0.5+bullRatio*2.5;      // 0.5x (deep bear) → 3x (full bull)
+  market.playerSpeedMod=0.7+bullRatio*0.6;  // 0.7 → 1.3
+  market.speedMod=1.6-bullRatio*1.0;        // 1.6 (bear=fast) → 0.6 (bull=slow)
+  market.shootMod=2.0-bullRatio*1.5;        // 2.0 (bear) → 0.5 (bull)
+
+  // ── Special threshold events ──
+  market.eventTimer-=dt;
+  var pctChg=(market.price-market.startPrice)/market.startPrice;
+
+  // Auto-detect crash: price drops >30% from max
+  if(market.eventType!=='crash'&&market.price<market.maxPrice*0.7&&market.trend<-.4){
+    market.eventType='crash';market.eventDuration=5000;market.crashCount++;
+    triggerCP('💥 시장 대폭락! -'+(((market.maxPrice-market.price)/market.maxPrice)*100).toFixed(0)+'%','danger');
+    sfxHit();
+    // Crash spawns extra enemies
+    for(var ce=0;ce<3;ce++){
+      var mt=ETYPES[Math.floor(Math.random()*3)];
+      var cx=100+Math.random()*(W-200),cy=-30-ce*25;
+      enemies.push({x:cx,y:cy,tX:cx,tY:50+Math.random()*60,baseX:cx,baseY:50+Math.random()*60,type:mt,hp:mt.hp||1,alive:true,entering:true,phase:Math.random()*6,diving:false,dAng:0,dSpd:0,hit:0});
+    }
+  }
+  // Auto-detect moon: price rises >50% from start
+  if(market.eventType!=='moon'&&pctChg>0.5&&market.trend>.5){
+    market.eventType='moon';market.eventDuration=5000;
+    triggerCP('🚀 TO THE MOON! +'+((pctChg)*100).toFixed(0)+'%!','streak');
+    sfxPowerup();
+    // Moon drops bonus powerups
+    for(var mp=0;mp<2;mp++){
+      var t=['rapid','spread','shield'];
+      powerups.push({x:200+Math.random()*(W-400),y:-20-mp*30,vy:.36,type:t[Math.floor(Math.random()*t.length)],life:1200});
+    }
+  }
+  // Recovery from events
+  if(market.eventDuration>0){
+    market.eventDuration-=dt;
+    if(market.eventDuration<=0){
+      if(market.eventType==='crash'){market.startPrice=market.price;market.maxPrice=market.price;triggerCP('📊 바닥 확인! 반등 시작?','money')}
+      else if(market.eventType==='moon'){market.startPrice=market.price;triggerCP('📊 고점 경신! 조정 올까?','normal')}
+      market.eventType=null;
+    }
+  }
+
+  // Random news events (less frequent, overlays on top)
+  if(market.eventTimer<=0&&market.eventDuration<=0){
+    market.eventTimer=18000+Math.random()*15000;
+    var ev=MARKET_EVENTS[Math.floor(Math.random()*MARKET_EVENTS.length)];
+    market.momentum+=ev.priceDelta*.03;
+    var cpStyle=ev.priceDelta>0?'money':'danger';
+    triggerCP(ev.name+' '+ev.sub,cpStyle);
+    if(ev.priceDelta<0)sfxHit();else sfxPowerup();
+  }
+
+  // Chart points
+  var targetY=H*.5-market.trend*120-market.momentum*150;
+  targetY=Math.max(40,Math.min(H-40,targetY));
+  chartPts.push(targetY+(Math.random()-.5)*3);
+  if(chartPts.length>160)chartPts.shift();
+
+  // Ticker
+  for(var i=0;i<tickerData.length;i++){var t=tickerData[i];
+    var drift=market.momentum*t.val*.004+(Math.random()-.5)*t.val*.0005;
+    t.val+=drift;t.val=Math.max(t.val*.1,t.val);t.chg=drift>0?1:-1}
+}
+
+function updateTicker(){
+  var el=document.getElementById('hud-ticker');if(!el)return;
+  var mkt=market.eventType;var tr=market.trend;
+  var mktLabel,mktCol;
+  if(mkt==='crash'){mktLabel='💥 대폭락';mktCol='#ff1744'}
+  else if(mkt==='moon'){mktLabel='🚀 대폭등';mktCol='#00e676'}
+  else if(tr>.4){mktLabel='📈 강세장';mktCol='#00e676'}
+  else if(tr>.1){mktLabel='📊 상승세';mktCol='#69f0ae'}
+  else if(tr>-.1){mktLabel='📊 보합세';mktCol='rgba(255,255,255,0.4)'}
+  else if(tr>-.4){mktLabel='📉 하락세';mktCol='#ff8a80'}
+  else{mktLabel='📉 약세장';mktCol='#ff1744'}
+  var mLine='<div style="color:'+mktCol+'">'+mktLabel+' x'+market.multiplier.toFixed(1)+'</div>';
+  var pLine='<div style="color:'+(market.price>=market.startPrice?'#00e676':'#ff1744')+'">IDX $'+Math.floor(market.price)+' '+(market.price>=market.startPrice?'▲':'▼')+Math.abs(((market.price-market.startPrice)/market.startPrice*100)).toFixed(1)+'%</div>';
+  el.innerHTML=mLine+pLine+tickerData.slice(0,3).map(function(t){
+    var cls=t.chg>0?'up':'dn';var arrow=t.chg>0?'▲':'▼';
+    var v=t.val>=1000?Math.floor(t.val).toLocaleString():t.val.toFixed(2);
+    return '<div>'+t.sym+' <span class="'+cls+'">'+arrow+' '+v+'</span></div>'}).join('')}
+
+function drawBg(){
+  // Sky color shifts with market
+  var bearAmt=Math.max(0,-market.trend);var bullAmt=Math.max(0,market.trend);
+  var g=ctx.createLinearGradient(0,0,0,H);
+  if(market.eventType==='crash'){
+    g.addColorStop(0,'#1a0000');g.addColorStop(.5,'#0a0005');g.addColorStop(1,'#150008');
+  }else if(market.eventType==='moon'){
+    g.addColorStop(0,'#001a0a');g.addColorStop(.5,'#000a15');g.addColorStop(1,'#001508');
+  }else{
+    var r1=Math.floor(5+bearAmt*15),g1=Math.floor(5+bullAmt*10),b1=Math.floor(15+bullAmt*10);
+    g.addColorStop(0,'rgb('+r1+','+g1+','+b1+')');
+    g.addColorStop(.5,'rgb('+Math.floor(r1*.8)+','+Math.floor(g1*.8)+','+Math.floor(b1*1.5)+')');
+    g.addColorStop(1,'rgb('+Math.floor(r1*.6)+','+Math.floor(g1*.6)+','+Math.floor(b1)+')');
+  }
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // Grid lines
+  ctx.strokeStyle='rgba(255,215,0,0.03)';ctx.lineWidth=1;
+  for(var y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  for(var x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  // Main chart line
+  if(chartPts.length>1){
+    var step=W/(chartPts.length-1);
+    // Determine chart color based on recent trend
+    var recent=chartPts[chartPts.length-1],prev=chartPts[Math.max(0,chartPts.length-20)];
+    var up=recent<prev; // y is inverted
+    var lineCol=up?'rgba(0,230,118,':'rgba(255,23,68,';
+    // Glow
+    ctx.strokeStyle=lineCol+'0.25)';ctx.lineWidth=6;ctx.beginPath();
+    for(var i=0;i<chartPts.length;i++){var x=i*step,y=chartPts[i];i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke();
+    // Main line
+    ctx.strokeStyle=lineCol+'0.5)';ctx.lineWidth=2;ctx.beginPath();
+    for(var i=0;i<chartPts.length;i++){var x=i*step,y=chartPts[i];i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}ctx.stroke();
+    // Fill under
+    ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle=lineCol+'0.04)';ctx.fill();
+    // Current price indicator
+    var curY=chartPts[chartPts.length-1];
+    ctx.fillStyle=up?'#00e676':'#ff1744';ctx.beginPath();ctx.arc(W-5,curY,4,0,Math.PI*2);ctx.fill();
+    // Price label
+    ctx.font='9px "Press Start 2P"';ctx.textAlign='right';ctx.fillStyle=up?'#00e676':'#ff1744';
+    ctx.fillText('$'+Math.floor(market.price),W-12,curY-8);
+    // Percent change
+    var pctChg=((market.price-market.startPrice)/market.startPrice*100);
+    ctx.fillText((pctChg>=0?'+':'')+pctChg.toFixed(1)+'%',W-12,curY+14);
+    ctx.textAlign='start';
+  }
+  // Event flash effect
+  if(market.eventType==='crash'){
+    ctx.fillStyle='rgba(255,0,0,'+(0.03+Math.sin(gT*.005)*.02)+')';ctx.fillRect(0,0,W,H);
+  }else if(market.eventType==='moon'){
+    ctx.fillStyle='rgba(0,255,100,'+(0.02+Math.sin(gT*.005)*.015)+')';ctx.fillRect(0,0,W,H);
+  }
+  // Floating symbols
+  ctx.fillStyle='rgba(255,215,0,0.03)';ctx.font='28px sans-serif';ctx.textAlign='center';
+  var syms=market.eventType==='moon'?['🚀','🌙','💰','📈']:market.eventType==='crash'?['💥','📉','💸','😱']:['$','₿','📊','💰'];
+  for(var i=0;i<5;i++){var fx=(gT*.008+i*175)%W,fy=70+Math.sin(gT*.001+i)*50;ctx.fillText(syms[i%syms.length],fx,fy)}
+  // Candlesticks
+  for(var i=0;i<15;i++){var cx=40+i*55,ch=15+Math.random()*25,isUp=market.trend>-.2?Math.random()>.35:Math.random()>.65;
+    ctx.fillStyle=isUp?'rgba(0,230,118,0.06)':'rgba(255,23,68,0.06)';
+    ctx.fillRect(cx-4,H-10-ch,8,ch);ctx.fillRect(cx-1,H-10-ch-5,2,5+ch+5)}
+  ctx.textAlign='start'}
+
+// ─── Player: Bitcoin/golden coin ─
+function drawPlayer(x,y,alpha){
+  ctx.save();ctx.globalAlpha=alpha||1;ctx.translate(x,y);
+  // Glow
+  ctx.fillStyle='rgba(255,215,0,0.08)';ctx.beginPath();ctx.arc(0,0,PW,0,Math.PI*2);ctx.fill();
+  // Coin body
+  var coinG=ctx.createRadialGradient(-4,-4,2,0,0,16);
+  coinG.addColorStop(0,'#fff5a0');coinG.addColorStop(.5,'#ffd700');coinG.addColorStop(1,'#b8860b');
+  ctx.fillStyle=coinG;ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fill();
+  // Coin border
+  ctx.strokeStyle='#daa520';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(255,245,160,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,13,0,Math.PI*2);ctx.stroke();
+  // ₿ symbol
+  ctx.fillStyle='#8B6914';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('₿',0,1);
+  // Sparkle
+  if(Math.sin(gT*.008)>.5){ctx.fillStyle='rgba(255,255,200,0.8)';ctx.beginPath();ctx.arc(8,-10,2,0,Math.PI*2);ctx.fill()}
+  ctx.restore()}
+
+// ─── Enemy types: bearish forces ─
+var ETYPES=[
+  {name:'공매도',emoji:'📉',color:'#ff1744',pts:100,w:22,h:20,shootRate:.0002},
+  {name:'세금',emoji:'🏛️',color:'#ff6d00',pts:200,w:26,h:22,shootRate:.0004},
+  {name:'규제',emoji:'⚖️',color:'#aa00ff',pts:300,w:28,h:22,shootRate:.0006},
+  {name:'해킹',emoji:'💻',color:'#d50000',pts:500,w:32,h:28,shootRate:.0008,hp:3}
+];
+var P_TAUNTS=['매수다!','존버!','풀매수!','다이아몬드핸드!','가즈아!','떡상!','물타기!','불타기!','올인!','To the Moon!'];
+var E_TAUNTS=['폭락이다~','하락장!','버블이야!','손절해~','패닉셀!','투매!','떡락!','곡소리~'];
+var KILL_MSGS=['청산 당함!💀','손절!','마진콜!','으악 상폐!','계좌 털림!','로스컷!','GG','파산!💸','퇴장!','안녕~','매도 완료!','수익 실현!'];
+var MISS_MSGS=['허매수!','체결 안됨!','슬리피지!','미체결!','빗나감!'];
+var HIT_MSGS=['계좌가!😱','내 코인!','세금 폭탄!','규제 당함!','해킹 당했어!','내 시드가...','마이너스!'];
+
+function drawEnemy(e){
+  var t=e.type;ctx.save();var wb=Math.sin(gT*.003+e.phase)*2;ctx.translate(e.x,e.y+wb);
+  // Red danger aura
+  ctx.globalAlpha=e.hit>0?.3:.1;ctx.fillStyle='#ff0000';ctx.beginPath();ctx.arc(0,0,t.w*.7,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=e.hit>0?(.5+Math.sin(gT*.05)*.5):1;
+  ctx.font=(t.w-4)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(t.emoji,0,0);
+  if(t.hp&&e.hp>1){ctx.fillStyle='rgba(213,0,0,0.5)';for(var i=0;i<e.hp-1;i++)ctx.fillRect(-4+i*5,t.h/2+2,4,3)}
+  if(e.diving){ctx.fillStyle='rgba(255,23,68,0.3)';ctx.beginPath();ctx.arc(0,0,t.w*.9,0,Math.PI*2);ctx.fill()}
+  ctx.restore()}
+
+// ─── Mega Boss ──────────────────
+var megaBoss=null,bossPT=0,bossST=0,bossMD=1,bossLC=0,bossLF=0,bossLX=0;
+var BOSS_DEFS=[
+  {name:'연준 의장',emoji:'🏦',color:'#1565C0',accent:'#42A5F5',maxHp:60,w:80,h:60,pts:5000,speed:1.2,shootRate:600,
+   taunts:['금리 인상이다!','양적 긴축!','긴축 발작!','인플레이션!']},
+  {name:'SEC 위원장',emoji:'👔',color:'#6A1B9A',accent:'#AB47BC',maxHp:100,w:90,h:65,pts:10000,speed:1.5,shootRate:450,
+   taunts:['증권법 위반!','상장 폐지!','벌금 부과!','규제의 철퇴!']},
+  {name:'다크 웨일',emoji:'🐋',color:'#B71C1C',accent:'#E53935',maxHp:150,w:100,h:70,pts:20000,speed:1.8,shootRate:350,
+   taunts:['시장 조작이다!','덤프 시작!','고래의 분노!','다 팔아!']}
+];
+function isBoss(s){return s>0&&s%5===0}
+function getBD(s){var i=Math.floor(s/5)-1;var d=BOSS_DEFS[Math.min(i,BOSS_DEFS.length-1)];var sc=1+Math.max(0,i-BOSS_DEFS.length+1)*.4;
+  return{name:d.name,emoji:d.emoji,color:d.color,accent:d.accent,maxHp:Math.floor(d.maxHp*sc),w:d.w,h:d.h,pts:Math.floor(d.pts*sc),speed:d.speed+(sc-1)*.3,shootRate:Math.max(200,d.shootRate-(sc-1)*10),taunts:d.taunts}}
+function spawnBoss(){var d=getBD(stage);megaBoss={x:W/2,y:-80,tY:70,def:d,hp:d.maxHp,maxHp:d.maxHp,alive:true,entering:true,hit:0,phase:1};
+  bossPT=0;bossST=0;bossMD=1;bossLC=0;bossLF=0;enemies=[];eBullets=[]}
+function drawBoss(){
+  if(!megaBoss||!megaBoss.alive)return;var b=megaBoss,d=b.def;var wb=Math.sin(gT*.002)*3;
+  ctx.save();ctx.translate(b.x,b.y+wb);
+  if(b.hit>0)ctx.globalAlpha=.5+Math.sin(gT*.05)*.5;
+  ctx.font=(d.w-15)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(d.emoji,0,0);
+  if(b.phase>=2){ctx.strokeStyle='rgba(255,0,0,'+(0.2+Math.sin(gT*.008)*.15)+')';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,d.w/2+10,0,Math.PI*2);ctx.stroke()}
+  if(b.phase>=3){ctx.strokeStyle='rgba(255,215,0,'+(0.3+Math.sin(gT*.01)*.2)+')';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,d.w/2+20,0,Math.PI*2);ctx.stroke()}
+  ctx.restore();
+  // HP bar
+  var bW=220,bH=10,bX=(W-bW)/2,bY=12;
+  ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(bX-2,bY-2,bW+4,bH+4);
+  ctx.fillStyle='rgba(255,255,255,0.06)';ctx.fillRect(bX,bY,bW,bH);
+  var r=b.hp/b.maxHp;ctx.fillStyle=r>.5?'#00e676':r>.25?'#ffd700':'#ff1744';
+  ctx.fillRect(bX,bY,bW*r,bH);
+  ctx.font='bold 11px "Press Start 2P"';ctx.textAlign='center';ctx.fillStyle='#fff';
+  ctx.strokeStyle='rgba(0,0,0,0.8)';ctx.lineWidth=3;
+  ctx.strokeText(d.emoji+' '+d.name,W/2,bY+bH+16);ctx.fillText(d.emoji+' '+d.name,W/2,bY+bH+16);ctx.textAlign='start';
+  // Red line attack
+  if(bossLF>0){var la=Math.min(1,bossLF/10),lw=10+Math.sin(gT*.03)*4;
+    ctx.save();ctx.globalAlpha=la*.3;ctx.fillStyle='#ff1744';ctx.fillRect(bossLX-lw,b.y+d.h/2,lw*2,H);
+    ctx.globalAlpha=la*.7;ctx.fillStyle='#ff5252';ctx.fillRect(bossLX-lw/3,b.y+d.h/2,lw*2/3,H);
+    ctx.globalAlpha=la;ctx.fillStyle='#fff';ctx.fillRect(bossLX-2,b.y+d.h/2,4,H);ctx.restore()}
+  if(bossLC>0){ctx.save();var ca=Math.min(1,bossLC/40)*(.5+Math.sin(gT*.02)*.3);
+    ctx.globalAlpha=ca;ctx.fillStyle='#ff1744';ctx.beginPath();ctx.arc(b.x,b.y+d.h/2,8+bossLC*.2,0,Math.PI*2);ctx.fill();ctx.restore()}}
+
+function updateBoss(dt){
+  if(!megaBoss||!megaBoss.alive)return;var b=megaBoss,d=b.def;
+  if(b.entering){b.y+=(b.tY-b.y)*.02;if(Math.abs(b.y-b.tY)<2){b.y=b.tY;b.entering=false;
+    var t=d.taunts[Math.floor(Math.random()*d.taunts.length)];
+    particles.push({x:b.x,y:b.y+d.h/2+10,vx:0,vy:-.15,life:100,maxLife:100,text:t,color:'#ff5252',size:0,bbl:true})}return}
+  if(b.hit>0)b.hit-=dt*.008;
+  var r=b.hp/b.maxHp,np=r>.6?1:r>.3?2:3;
+  if(np!==b.phase){b.phase=np;var msgs={2:['본격적으로 간다!','시장 폭격!'],3:['최종 폭락!!!','전부 청산!!!']};
+    var m=msgs[np];if(m){particles.push({x:b.x,y:b.y-d.h/2-15,vx:0,vy:-.15,life:100,maxLife:100,text:m[Math.floor(Math.random()*m.length)],color:'#ff1744',size:0,bbl:true});spawnExp(b.x,b.y,d.accent,20)}}
+  var ms=d.speed*(1+(b.phase-1)*.4);b.x+=bossMD*ms;if(b.x>W-d.w/2-20)bossMD=-1;if(b.x<d.w/2+20)bossMD=1;
+  if(b.phase===3)b.y=b.tY+Math.sin(gT*.004)*20;
+  bossST-=dt;bossPT+=dt;if(bossST<=0){bossST=d.shootRate/b.phase;fireBoss(b)}
+  if(b.phase>=2&&bossLC===0&&bossLF===0&&Math.random()<.002*b.phase){bossLC=60;bossLX=player?player.x:W/2;
+    particles.push({x:b.x,y:b.y,vx:0,vy:0,life:90,maxLife:90,text:'⚠️ 폭락 경보!',color:'#ff1744',size:0,bbl:true})}
+  if(bossLC>0){bossLC--;if(bossLC<=0){bossLF=40;bossLX=player?player.x+(Math.random()-.5)*60:W/2;sfxLaser()}}
+  if(bossLF>0){bossLF--;if(player&&invTimer<=0&&Math.abs(player.x-bossLX)<18&&player.y>b.y)playerHit()}
+  if(b.phase===3&&enemies.length<6&&Math.random()<.003){var side=Math.random()>.5?1:-1;var mt=ETYPES[Math.floor(Math.random()*2)];
+    enemies.push({x:b.x+side*50,y:b.y,tX:b.x+side*(80+Math.random()*80),tY:b.y+60+Math.random()*40,type:mt,hp:mt.hp||1,alive:true,entering:true,phase:Math.random()*6,diving:false,dAng:0,dSpd:0,hit:0});
+    particles.push({x:b.x,y:b.y+30,vx:side*.3,vy:.2,life:80,maxLife:80,text:'공매도 투입!',color:'#ff5252',size:0,bbl:true})}}
+
+function fireBoss(b){var d=b.def;
+  if(b.phase===1){for(var a=-1;a<=1;a++)eBullets.push({x:b.x+a*20,y:b.y+d.h/2,vy:1.2,vx:a*.45,w:0})}
+  else if(b.phase===2){for(var i=0;i<6;i++){var ang=(i/6)*Math.PI*2+gT*.001;eBullets.push({x:b.x,y:b.y+d.h/2,vy:Math.sin(ang)*.9+.6,vx:Math.cos(ang)*.9,w:0})}
+    if(player&&Math.random()>.5){var dx=player.x-b.x,dy=player.y-b.y,dist=Math.sqrt(dx*dx+dy*dy)||1;eBullets.push({x:b.x,y:b.y+d.h/2,vy:dy/dist*1.5,vx:dx/dist*1.5,w:0})}}
+  else{for(var i=0;i<8;i++){var ang=(i/8)*Math.PI*2+bossPT*.002;eBullets.push({x:b.x,y:b.y+d.h/2,vy:Math.sin(ang)*.9+.45,vx:Math.cos(ang)*.9,w:0})}
+    if(player){var dx=player.x-b.x,dy=player.y-b.y,dist=Math.sqrt(dx*dx+dy*dy)||1;
+      for(var s=-1;s<=1;s+=2)eBullets.push({x:b.x+s*30,y:b.y+d.h/2,vy:dy/dist*1.8,vx:dx/dist*1.8+s*.15,w:0})}}}
+
+function checkBossHit(){
+  if(!megaBoss||!megaBoss.alive)return;var b=megaBoss,d=b.def;
+  for(var i=bullets.length-1;i>=0;i--){var bl=bullets[i];
+    if(Math.abs(bl.x-b.x)<d.w/2+4&&Math.abs(bl.y-b.y)<d.h/2+4){bullets.splice(i,1);b.hp--;b.hit=1;spawnExp(bl.x,bl.y,'#ffd700',3);sfxBossHit();
+      if(Math.random()>.85){var pm=['아야!','내 자산!','매수 세력!','끄덕없다!','흔들리지 마!'];
+        particles.push({x:b.x+(Math.random()-.5)*40,y:b.y-d.h/2-5,vx:0,vy:-.15,life:90,maxLife:90,text:pm[Math.floor(Math.random()*pm.length)],color:'#ff8a80',size:0,bbl:true})}
+      if(b.hp<=0){b.alive=false;sfxBossDie();for(var e=0;e<8;e++){(function(ex,ey){setTimeout(function(){spawnExp(ex+(Math.random()-.5)*80,ey+(Math.random()-.5)*60,d.accent,20)},e*150)})(b.x,b.y)}
+        score+=d.pts;spawnScore(b.x,b.y,d.pts);onScoreChange();marketPump(.12);
+        particles.push({x:b.x,y:b.y,vx:0,vy:-.15,life:140,maxLife:140,text:'🎉 '+d.name+' 퇴출!!! 🎉',color:'#ffd700',size:0,bbl:true});
+        updateHUD();setTimeout(function(){megaBoss=null;state='stageClear';stgTimer=2500;stage++},1500)}break}}
+  if(invTimer<=0&&player&&Math.abs(player.x-b.x)<(d.w+PW)/2&&Math.abs(player.y-b.y)<(d.h+PH)/2)playerHit()}
+
+// ─── Particles ──────────────────
+function spawnExp(x,y,col,n){for(var i=0;i<(n||12);i++){var a=Math.random()*Math.PI*2,s=1+Math.random()*3;
+  particles.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:20+Math.random()*20,maxLife:40,color:col||'#ffd700',size:2+Math.random()*3})}}
+function spawnScore(x,y,pts){particles.push({x:x,y:y,vx:0,vy:-.4,life:80,maxLife:80,text:'+$'+pts.toLocaleString(),color:'#ffd700',size:0,bbl:true})}
+function updateParts(){for(var i=particles.length-1;i>=0;i--){var p=particles[i];p.x+=p.vx;p.y+=p.vy;if(!p.text)p.vy+=.05;p.life--;if(p.life<=0)particles.splice(i,1)}}
+function drawParts(){
+  for(var i=0;i<particles.length;i++){var p=particles[i],r=p.life/p.maxLife;
+    var a=p.bbl?(r>.3?1:r/.3):r;ctx.globalAlpha=a;
+    if(p.text){ctx.font='bold 13px "Press Start 2P"';ctx.textAlign='center';
+      if(p.bbl){var tw=ctx.measureText(p.text).width,bx=p.x-tw/2-8,by=p.y-11,bw=tw+16,bh=20;
+        ctx.fillStyle='rgba(5,5,20,0.85)';ctx.beginPath();ctx.moveTo(bx+5,by);ctx.lineTo(bx+bw-5,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+5);ctx.lineTo(bx+bw,by+bh-5);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-5,by+bh);ctx.lineTo(bx+5,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-5);ctx.lineTo(bx,by+5);ctx.quadraticCurveTo(bx,by,bx+5,by);ctx.fill();
+        ctx.strokeStyle=p.color;ctx.globalAlpha=a*.4;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=a}
+      ctx.strokeStyle='rgba(0,0,0,0.9)';ctx.lineWidth=3;ctx.strokeText(p.text,p.x,p.y);ctx.fillStyle=p.color;ctx.fillText(p.text,p.x,p.y)}
+    else{ctx.fillStyle=p.color;ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size)}}
+  ctx.globalAlpha=1}
+
+// ─── Powerups (financial buffs) ─
+function spawnPow(x,y){if(Math.random()>.15)return;var t=['rapid','spread','shield'];
+  powerups.push({x:x,y:y,vy:.36,type:t[Math.floor(Math.random()*t.length)],life:1200})}
+function drawPow(p){
+  if(p.life<300&&Math.sin(gT*.02)>0)return;
+  var bounce=Math.sin(gT*.006+p.x)*5,px=p.x,py=p.y+bounce;
+  var pulse=.6+Math.sin(gT*.01)*.4;
+  ctx.globalAlpha=pulse*.4;ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(px,py,22,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=pulse*.2;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(px,py,26,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=pulse*.3;ctx.strokeStyle='#ffd700';ctx.lineWidth=2;
+  for(var r=0;r<6;r++){var a=r*Math.PI/3+gT*.003;ctx.beginPath();ctx.moveTo(px+Math.cos(a)*14,py+Math.sin(a)*14);ctx.lineTo(px+Math.cos(a)*24,py+Math.sin(a)*24);ctx.stroke()}
+  ctx.globalAlpha=1;
+  var cols={rapid:'#ffd700',spread:'#00e676',shield:'#2979ff'},icons={rapid:'📈',spread:'💎',shield:'🛡️'};
+  var curLv=player?{rapid:player.rapidLv,spread:player.spreadLv,shield:player.shieldLv}:{rapid:0,spread:0,shield:0};
+  var nextLv=Math.min((curLv[p.type]||0)+1,5);
+  var label=nextLv>=5?'MAX!':'Lv'+nextLv;
+  ctx.fillStyle=cols[p.type];ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);ctx.stroke();
+  ctx.font='14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(icons[p.type],px,py);
+  ctx.font='bold 7px "Press Start 2P"';ctx.fillStyle='#ffd700';ctx.strokeStyle='rgba(0,0,0,0.7)';ctx.lineWidth=2;
+  ctx.strokeText(label,px,py+22);ctx.fillText(label,px,py+22);ctx.globalAlpha=1;ctx.textAlign='start';ctx.textBaseline='alphabetic'}
+
+// ─── Name-tracing path system (butt-writing!) ──
+var nameWords=['BTC','ETH','DOGE','코인','주식','떡상','존버','매수','불장','달러','비트','이더','숏','롱','펌프','덤프','금리','호재','가즈아','HODL','MOON','PUMP','SELL','BUY'];
+var namePath=[],nameIdx=0,nameT=0,nameSpeed=0.008,nameOffX=0,nameOffY=0,curWord='';
+
+function generateNamePath(word){
+  // Convert each character into a series of x,y offsets that trace the shape
+  var pts=[];
+  // Use a hidden canvas to rasterize the text, then extract path
+  var tc=document.createElement('canvas');tc.width=300;tc.height=80;
+  var tx=tc.getContext('2d');
+  tx.fillStyle='#fff';tx.font='bold 50px sans-serif';tx.textAlign='center';tx.textBaseline='middle';
+  tx.fillText(word,150,45);
+  var img=tx.getImageData(0,0,300,80);
+  // Scan columns left to right, find center of mass per column
+  var cols=[];
+  for(var cx=0;cx<300;cx+=3){
+    var sumY=0,cnt=0;
+    for(var cy=0;cy<80;cy++){
+      if(img.data[(cy*300+cx)*4+3]>128){sumY+=cy;cnt++}}
+    if(cnt>0)cols.push({x:cx,y:sumY/cnt})}
+  if(cols.length<2)return[{x:0,y:0},{x:1,y:0}];
+  // Normalize to -1..1 range
+  var minX=cols[0].x,maxX=cols[cols.length-1].x;
+  var minY=999,maxY=0;
+  for(var i=0;i<cols.length;i++){if(cols[i].y<minY)minY=cols[i].y;if(cols[i].y>maxY)maxY=cols[i].y}
+  var rangeX=maxX-minX||1,rangeY=maxY-minY||1;
+  var normalized=[];
+  for(var i=0;i<cols.length;i++){
+    normalized.push({x:(cols[i].x-minX)/rangeX*2-1, y:(cols[i].y-minY)/rangeY*2-1})}
+  return normalized;
+}
+
+function pickNewWord(){
+  curWord=nameWords[Math.floor(Math.random()*nameWords.length)];
+  namePath=generateNamePath(curWord);
+  nameIdx=0;nameT=0;
+  // Show what they're writing
+  particles.push({x:W/2,y:8,vx:0,vy:.1,life:120,maxLife:120,text:'✍️ "'+curWord+'"',color:'rgba(255,215,0,0.4)',size:0,bbl:true});
+}
+
+function getNameOffset(){
+  if(namePath.length<2)return{x:0,y:0};
+  // Interpolate along the path
+  var totalLen=namePath.length-1;
+  var pos=nameT*totalLen;
+  var idx=Math.min(Math.floor(pos),totalLen-1);
+  var frac=pos-idx;
+  var a=namePath[idx],b=namePath[Math.min(idx+1,totalLen)];
+  return{x:a.x+(b.x-a.x)*frac, y:a.y+(b.y-a.y)*frac};
+}
+
+// ─── Spawning ───────────────────
+function spawnEnemies(){enemies=[];megaBoss=null;bossLC=0;bossLF=0;
+  if(isBoss(stage)){spawnBoss();onBossEnter();eDir=1;eSpd=0;diveInt=99999;diveTimer=99999;return}
+  var rows=Math.min(4+Math.floor(stage/3),6),cols=Math.min(12+Math.floor(stage/4),14);
+  var sx=(W-cols*58)/2+29,sy=45;
+  for(var r=0;r<rows;r++){var ti=r===0?3:r<2?2:r<3?1:0;if(stage<3&&ti===3)ti=2;var t=ETYPES[Math.min(ti,ETYPES.length-1)];
+    for(var c=0;c<cols;c++){var ex=sx+c*58,ey=sy+r*40;
+      enemies.push({x:ex,y:-30-r*20,tX:ex,tY:ey,baseX:ex,baseY:ey,type:t,hp:t.hp||1,alive:true,entering:true,phase:r*.5+c*.3,diving:false,dAng:0,dSpd:0,hit:0})}}
+  eDir=1;eSpd=.3+stage*.08;diveInt=Math.max(800,3000-stage*200);diveTimer=diveInt;
+  pickNewWord()}
+
+function updateEnemies(dt){
+  var any=false,lm=W,rm=0;
+  // Advance name-tracing path
+  nameT+=nameSpeed;
+  if(nameT>=1){nameT=0;pickNewWord()}
+  var nOff=getNameOffset();
+  // Scale the name movement (amplitude)
+  var ampX=80+stage*5,ampY=30+stage*3;
+  nameOffX=nOff.x*ampX;
+  nameOffY=nOff.y*ampY;
+
+  for(var i=0;i<enemies.length;i++){var e=enemies[i];if(!e.alive)continue;any=true;
+    if(e.entering){e.y+=(e.tY-e.y)*.04;e.x+=(e.tX-e.x)*.04;if(Math.abs(e.y-e.tY)<1){e.y=e.tY;e.x=e.tX;e.entering=false;e.baseX=e.tX;e.baseY=e.tY}continue}
+    if(e.diving){e.x+=Math.sin(e.dAng)*2;e.y+=e.dSpd;e.dAng+=.05;if(e.y>H+30){e.diving=false;e.y=e.baseY+nameOffY;e.x=e.baseX+nameOffX;e.tY=e.baseY;e.tX=e.baseX}
+      if(Math.random()<.006){eBullets.push({x:e.x,y:e.y+10,vy:1.2+Math.random()*.6,vx:(Math.random()-.5)*.3,w:Math.random()*6});
+        if(Math.random()>.7){var et=E_TAUNTS[Math.floor(Math.random()*E_TAUNTS.length)];particles.push({x:e.x,y:e.y-12,vx:0,vy:-.15,life:90,maxLife:90,text:et,color:'#ff5252',size:0,bbl:true})}}
+    }else{
+      // Name-tracing movement: base position + name offset
+      var targetX=e.baseX+nameOffX;
+      var targetY=e.baseY+nameOffY;
+      e.x+=(targetX-e.x)*.08;
+      e.y+=(targetY-e.y)*.08;
+      e.tX=e.baseX;e.tY=e.baseY;
+      if(e.x<lm)lm=e.x;if(e.x>rm)rm=e.x;
+      if(Math.random()<e.type.shootRate*(1+stage*.1)*market.shootMod){eBullets.push({x:e.x,y:e.y+e.type.h/2,vy:.9+Math.random()*.6,vx:0,w:Math.random()*6});
+        if(Math.random()>.75){var et=E_TAUNTS[Math.floor(Math.random()*E_TAUNTS.length)];particles.push({x:e.x,y:e.y-e.type.h/2-8,vx:0,vy:-.15,life:100,maxLife:100,text:et,color:'#ff5252',size:0,bbl:true})}}}
+    if(e.hit>0)e.hit-=dt*.01}
+  diveTimer-=dt;if(diveTimer<=0){diveTimer=diveInt;var al=enemies.filter(function(e){return e.alive&&!e.diving&&!e.entering});
+    if(al.length>0){var d=al[Math.floor(Math.random()*al.length)];d.diving=true;d.dSpd=(.75+stage*.09)*market.speedMod;d.dAng=Math.random()*Math.PI*2;sfxDive();marketDump(.01);
+      var dt2=['폭락 돌격!','투매다!','숏!숏!숏!','패닉셀!','하락 브레이크!'];
+      particles.push({x:d.x,y:d.y-14,vx:0,vy:-.2,life:100,maxLife:100,text:dt2[Math.floor(Math.random()*dt2.length)],color:'#ff5252',size:0,bbl:true})}}
+  if(!any&&(!megaBoss||!megaBoss.alive)&&megaBoss===null){state='stageClear';stgTimer=2000;stage++;sfxStageClear()}}
+
+// ─── Collisions ─────────────────
+function checkColl(){
+  for(var b=bullets.length-1;b>=0;b--){var bl=bullets[b];
+    for(var i=0;i<enemies.length;i++){var e=enemies[i];if(!e.alive)continue;
+      if(Math.abs(bl.x-e.x)<e.type.w/2+3&&Math.abs(bl.y-e.y)<e.type.h/2+3){bullets.splice(b,1);e.hp--;e.hit=1;
+        if(e.hp<=0){e.alive=false;var pts=Math.floor(e.type.pts*market.multiplier);score+=pts;spawnExp(e.x,e.y,e.type.color,15);spawnScore(e.x,e.y-12,pts);sfxKill();onKill();onScoreChange();marketPump(.015);
+          var km=KILL_MSGS[Math.floor(Math.random()*KILL_MSGS.length)];
+          particles.push({x:e.x,y:e.y,vx:0,vy:-.2,life:110,maxLife:110,text:km,color:'#ff8a80',size:0,bbl:true});
+          spawnPow(e.x,e.y);updateHUD()}else spawnExp(e.x,e.y,'#fff',5);break}}}
+  if(invTimer<=0){
+    for(var i=eBullets.length-1;i>=0;i--){var eb=eBullets[i];if(Math.abs(eb.x-player.x)<PW/2+2&&Math.abs(eb.y-player.y)<PH/2+2){eBullets.splice(i,1);playerHit();break}}
+    for(var i=0;i<enemies.length;i++){var e=enemies[i];if(!e.alive||!e.diving)continue;
+      if(Math.abs(e.x-player.x)<(e.type.w+PW)/2&&Math.abs(e.y-player.y)<(e.type.h+PH)/2){e.alive=false;spawnExp(e.x,e.y,e.type.color,10);playerHit();break}}}
+  for(var i=powerups.length-1;i>=0;i--){var p=powerups[i];
+    if(Math.abs(p.x-player.x)<20&&Math.abs(p.y-player.y)<20){
+      if(p.type==='rapid'){player.rapidLv=Math.min(player.rapidLv+1,5);player.rapid=6000+player.rapidLv*1000;
+        var rlbl=['','Lv1 연사!','Lv2 고속매매!','Lv3 초고속!','Lv4 HFT!','Lv5 MAX!'][player.rapidLv];
+        particles.push({x:player.x,y:player.y-45,vx:0,vy:-.2,life:100,maxLife:100,text:'📈'+rlbl,color:'#ffd700',size:0,bbl:true})}
+      else if(p.type==='spread'){player.spreadLv=Math.min(player.spreadLv+1,5);
+        var slbl=['','Lv1 분산투자!','Lv2 포트폴리오!','Lv3 다각화!','Lv4 글로벌!','Lv5 MAX!'][player.spreadLv];
+        particles.push({x:player.x,y:player.y-45,vx:0,vy:-.2,life:100,maxLife:100,text:'💎'+slbl,color:'#00e676',size:0,bbl:true})}
+      else{player.shieldLv=Math.min(player.shieldLv+1,5);player.shield=player.shieldLv;
+        var dlbl=['','Lv1 보험!','Lv2 헤지!','Lv3 옵션!','Lv4 풋옵션!','Lv5 MAX!'][player.shieldLv];
+        particles.push({x:player.x,y:player.y-45,vx:0,vy:-.2,life:100,maxLife:100,text:'🛡️'+dlbl,color:'#2979ff',size:0,bbl:true})}
+      spawnExp(p.x,p.y,'#ffd700',8);powerups.splice(i,1);sfxPowerup();sfxLevelUp();marketPump(.03);updateHUD()}}}
+
+function playerHit(){
+  if(player.shield>0){player.shield--;
+    if(player.shield<=0)player.shieldLv=Math.max(0,player.shieldLv-1);
+    spawnExp(player.x,player.y,'#2979ff',10);sfxShield();
+    particles.push({x:player.x,y:player.y-20,vx:0,vy:-.2,life:90,maxLife:90,text:'🛡️ 방어 성공!',color:'#2979ff',size:0,bbl:true});invTimer=500;return}
+  lives--;spawnExp(player.x,player.y,'#ffd700',20);sfxHit();onNearDeath();marketDump(.08);
+  var hm=HIT_MSGS[Math.floor(Math.random()*HIT_MSGS.length)];
+  particles.push({x:player.x,y:player.y-30,vx:0,vy:-.2,life:120,maxLife:120,text:hm,color:'#ff5252',size:0,bbl:true});
+  invTimer=2000;if(lives<=0){state='over';stopBGM();sfxGameOver();if(score>hiScore)hiScore=score;
+    document.getElementById('final-score').textContent='총 자산: $'+score.toLocaleString();
+    document.getElementById('final-hi').textContent='최고 기록: $'+hiScore.toLocaleString();showOv('ov-over')}
+  player.spreadLv=Math.max(0,player.spreadLv-1);player.rapidLv=Math.max(0,player.rapidLv-1);
+  if(player.rapidLv===0)player.rapid=0;updateHUD()}
+
+// ─── Shooting ───────────────────
+function shoot(){
+  // Max bullets scales: base 5 + rapidLv*2
+  var maxB=MAX_B+player.rapidLv*2;
+  if(bullets.length>=maxB&&player.rapid<=0)return;if(shootCD>0)return;
+  // Cooldown scales: base 180, rapid Lv1=120 Lv2=90 Lv3=65 Lv4=45 Lv5=30
+  var rateByLv=[180,120,90,65,45,30];
+  shootCD=player.rapid>0?rateByLv[Math.min(player.rapidLv,5)]:180;
+  sfxShoot();
+  // Center bullet always
+  bullets.push({x:player.x,y:player.y-PH/2,vx:0,wb:Math.random()*Math.PI*2});
+  // Spread bullets based on spreadLv (0=none, 1=3way, 2=5way, 3=7way, 4=9way, 5=11way)
+  if(player.spreadLv>=1){
+    var spreadCount=1+player.spreadLv; // 2,3,4,5,6 bullets each side pair
+    var angleStep=0.15+player.spreadLv*0.03;
+    for(var s=1;s<=Math.min(player.spreadLv,5);s++){
+      var vx=s*angleStep*1.2;
+      bullets.push({x:player.x-s*4,y:player.y-PH/2+s*2,vx:-vx,wb:Math.random()*Math.PI*2});
+      bullets.push({x:player.x+s*4,y:player.y-PH/2+s*2,vx:vx,wb:Math.random()*Math.PI*2});
+    }
+  }
+  if(Math.random()>.7){var t=P_TAUNTS[Math.floor(Math.random()*P_TAUNTS.length)];
+    particles.push({x:player.x+(Math.random()-.5)*30,y:player.y-40-Math.random()*15,vx:0,vy:-.25,life:90,maxLife:90,text:t,color:'#00e676',size:0,bbl:true})}}
+
+function drawBullets(){
+  // Player: green dollar signs going up
+  for(var i=0;i<bullets.length;i++){var b=bullets[i],wx=Math.sin(gT*.015+b.wb)*2,bx=b.x+wx,by=b.y;
+    ctx.globalAlpha=.15;ctx.fillStyle='#00e676';ctx.beginPath();ctx.arc(bx,by+10,10,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+    ctx.fillStyle='#00e676';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',bx,by);
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='8px sans-serif';ctx.fillText('↑',bx,by-12)}
+  // Enemy: red down arrows
+  for(var i=0;i<eBullets.length;i++){var b=eBullets[i],wx=Math.sin(gT*.012+(b.w||0))*2,bx=b.x+wx,by=b.y,rot=gT*.01+i;
+    ctx.globalAlpha=.3;ctx.fillStyle='#ff0000';ctx.beginPath();ctx.arc(bx,by,12,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=.15;ctx.beginPath();ctx.arc(bx,by,18,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+    ctx.save();ctx.translate(bx,by);ctx.rotate(rot);ctx.fillStyle='#ff1744';
+    ctx.beginPath();for(var j=0;j<4;j++){var a=j*Math.PI/2;ctx.lineTo(Math.cos(a)*8,Math.sin(a)*8);ctx.lineTo(Math.cos(a+Math.PI/4)*3,Math.sin(a+Math.PI/4)*3)}
+    ctx.closePath();ctx.fill();ctx.fillStyle='#ff8a80';ctx.beginPath();ctx.arc(0,0,2,0,Math.PI*2);ctx.fill();ctx.restore()}
+  ctx.globalAlpha=1;ctx.textAlign='start';ctx.textBaseline='alphabetic'}
+
+// ─── HUD ────────────────────────
+function updateHUD(){document.getElementById('hud-score').textContent='$'+score.toLocaleString();
+  document.getElementById('hud-hi').textContent='$'+hiScore.toLocaleString();document.getElementById('hud-stage').textContent=stage;
+  var lv=document.getElementById('hud-lives');lv.innerHTML='';for(var i=0;i<lives;i++){var s=document.createElement('span');s.textContent='💰';lv.appendChild(s)}
+  // Weapon levels
+  var wpn=document.getElementById('hud-wpn');if(wpn&&player){
+    var rl=player.rapidLv,sl=player.spreadLv,dl=player.shieldLv;
+    var bar=function(n){var s='';for(var i=0;i<5;i++)s+=i<n?'<span style="color:#ffd700">■</span>':'<span style="color:rgba(255,255,255,0.1)">□</span>';return s};
+    wpn.innerHTML='📈 '+bar(rl)+'<br>💎 '+bar(sl)+'<br>🛡️ '+bar(dl)}}
+function showOv(id){['ov-start','ov-over','ov-stage'].forEach(function(o){document.getElementById(o).classList.toggle('hidden',o!==id)})}
+function hideOv(){['ov-start','ov-over','ov-stage'].forEach(function(o){document.getElementById(o).classList.add('hidden')})}
+
+// ─── CATCHPHRASE SYSTEM ─────────
+var catchphrases=[];
+var cpKillStreak=0,cpStreakTimer=0,cpLastScore=0,cpTimeSinceCP=0;
+
+// Catchphrase pool by trigger type
+var CP_STREAK=[
+  {min:5,texts:['🔥 연속 매도! 5 KILL STREAK!','🔥 개미의 반격!','💪 5연속 청산!']},
+  {min:10,texts:['🔥🔥 10 KILL! 무쌍 모드!','🔥🔥 미친 매도! 10연승!','💀 공매도 학살!']},
+  {min:20,texts:['🔥🔥🔥 20 KILL!!! 전설의 트레이더!','👑 시장의 왕이 나타났다!','🚀🚀🚀 UNSTOPPABLE!']}
+];
+var CP_SCORE=[
+  {min:5000,texts:['💵 자산 $5,000 돌파!','📊 첫 수익 실현!']},
+  {min:20000,texts:['💰 $20,000! 이제 시작이야!','🏦 통장이 웃고 있다!']},
+  {min:50000,texts:['🤑 $50,000!! 큰 손 등극!','💎 다이아몬드 핸드의 결실!']},
+  {min:100000,texts:['🐋 $100K!!! 고래가 되었다!','👑 월스트리트를 정복하라!']}
+];
+var CP_RANDOM=[
+  '지금이 매수 타이밍이다!','📈 불장은 의심 속에 자란다!','HODL! 절대 팔지 마!',
+  '🌙 To the Moon!','개미가 고래를 이기는 날!','💎🙌 다이아몬드 핸드!',
+  '이것이 금융 전쟁이다!','공포에 사고 탐욕에 팔아라!','🚀 로켓 발사 준비!',
+  '역사는 존버를 기억한다!','비트코인은 멈추지 않는다!','📊 차트는 거짓말을 안 해!',
+  '매수는 기술, 매도는 예술!','하락장? 세일 기간이지!','개미 연합 파이팅!',
+  '워런 버핏도 울고 갈 실력!','🏦 연준이 두려워한다!','떡상 직전의 고요함...'
+];
+var CP_NEARDEATH=['😱 위험해! 마지막 목숨!','💀 계좌 잔고 위험!','🚨 마진콜 임박!','❗ 반등하라! 지금이 아니면 끝이다!'];
+var CP_BOSS_ENTER=['⚠️ 거대 세력 출현!','🐋 고래가 온다!','🏦 최종 보스 등장!','😈 시장의 어둠이 깨어난다!'];
+
+// Active catchphrase display
+var activeCP=null; // {text, timer, maxTimer, style}
+
+function triggerCP(text,style){
+  activeCP={text:text,timer:180,maxTimer:180,style:style||'normal'};
+  // Sound: dramatic chord
+  if(audioCtx){
+    var notes=style==='danger'?[220,277,330]:[440,554,659];
+    notes.forEach(function(n,i){setTimeout(function(){playTone(n,.2,'sine',.15);playTone(n/2,.25,'triangle',.08)},i*60)});
+  }
+}
+
+function checkCatchphrase(dt){
+  cpTimeSinceCP+=dt;
+  cpStreakTimer-=dt;
+  if(cpStreakTimer<=0)cpKillStreak=0;
+
+  // Market trend catchphrases
+  if(cpTimeSinceCP>8000&&!activeCP){
+    if(market.trend>.6&&Math.random()<.003){
+      var bullCPs=['📈 차트가 미쳤다! 떡상!','🐂 황소가 달린다!','💰 개미들이 웃는 날!','🚀 매수세 폭발!','📈 저항선 돌파!'];
+      triggerCP(bullCPs[Math.floor(Math.random()*bullCPs.length)],'money');cpTimeSinceCP=0;
+    }else if(market.trend<-.6&&Math.random()<.003){
+      var bearCPs=['📉 차트 폭락 중!','🐻 곰이 지배한다!','💸 패닉셀 주의!','📉 지지선 붕괴!','😱 공포지수 MAX!'];
+      triggerCP(bearCPs[Math.floor(Math.random()*bearCPs.length)],'danger');cpTimeSinceCP=0;
+    }else if(market.multiplier>2&&Math.random()<.002){
+      triggerCP('💎 x'+market.multiplier.toFixed(1)+' 배율! 지금이 기회!','money');cpTimeSinceCP=0;
+    }else if(market.multiplier<0.7&&Math.random()<.002){
+      triggerCP('📉 x'+market.multiplier.toFixed(1)+' 배율... 존버하자!','danger');cpTimeSinceCP=0;
+    }
+  }
+  // Combo catchphrases
+  if(!activeCP&&market.combo>=5&&cpTimeSinceCP>3000&&Math.random()<.01){
+    triggerCP('🔥 '+market.combo+' COMBO! 매수세 폭발!','streak');cpTimeSinceCP=0;
+  }
+  // Random catchphrase (less frequent now)
+  if(cpTimeSinceCP>30000&&!activeCP&&Math.random()<.001){
+    triggerCP(CP_RANDOM[Math.floor(Math.random()*CP_RANDOM.length)],'hype');cpTimeSinceCP=0;
+  }
+}
+
+function onKill(){
+  cpKillStreak++;cpStreakTimer=2000;
+  for(var i=CP_STREAK.length-1;i>=0;i--){
+    if(cpKillStreak===CP_STREAK[i].min){
+      var arr=CP_STREAK[i].texts;triggerCP(arr[Math.floor(Math.random()*arr.length)],'streak');cpTimeSinceCP=0;break}}
+}
+function onScoreChange(){
+  for(var i=CP_SCORE.length-1;i>=0;i--){
+    if(score>=CP_SCORE[i].min&&cpLastScore<CP_SCORE[i].min){
+      var arr=CP_SCORE[i].texts;triggerCP(arr[Math.floor(Math.random()*arr.length)],'money');cpTimeSinceCP=0;break}}
+  cpLastScore=score;
+}
+function onNearDeath(){
+  if(lives===1)triggerCP(CP_NEARDEATH[Math.floor(Math.random()*CP_NEARDEATH.length)],'danger');
+}
+function onBossEnter(){
+  triggerCP(CP_BOSS_ENTER[Math.floor(Math.random()*CP_BOSS_ENTER.length)],'boss');
+}
+
+function drawCatchphrase(){
+  if(!activeCP)return;
+  var cp=activeCP;cp.timer--;
+  if(cp.timer<=0){activeCP=null;return}
+  var progress=1-cp.timer/cp.maxTimer; // 0→1
+  var alpha,scale,y;
+  // Dramatic entrance: slam in from large, hold, fade out
+  if(progress<0.15){
+    // Slam in
+    var t=progress/0.15;
+    scale=3-t*2; // 3→1
+    alpha=t;
+    y=H*0.38;
+  }else if(progress<0.75){
+    // Hold with slight pulse
+    scale=1+Math.sin(progress*20)*0.03;
+    alpha=1;
+    y=H*0.38;
+  }else{
+    // Fade out upward
+    var t=(progress-0.75)/0.25;
+    scale=1+t*0.3;
+    alpha=1-t;
+    y=H*0.38-t*30;
+  }
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  ctx.translate(W/2,y);
+  ctx.scale(scale,scale);
+  // Background flash
+  if(progress<0.1){
+    ctx.globalAlpha=alpha*0.15;
+    var flashColors={normal:'#ffd700',streak:'#ff4444',money:'#00e676',hype:'#ffd700',danger:'#ff1744',boss:'#aa00ff'};
+    ctx.fillStyle=flashColors[cp.style]||'#ffd700';
+    ctx.fillRect(-W,-H/2,W*2,H);
+    ctx.globalAlpha=alpha;
+  }
+  // Horizontal lines
+  var lineColor={normal:'rgba(255,215,0,0.3)',streak:'rgba(255,68,68,0.4)',money:'rgba(0,230,118,0.3)',hype:'rgba(255,215,0,0.3)',danger:'rgba(255,23,68,0.5)',boss:'rgba(170,0,255,0.4)'};
+  ctx.fillStyle=lineColor[cp.style]||'rgba(255,215,0,0.3)';
+  ctx.fillRect(-W/2,-18,W,36);
+  // Scanlines on the bar
+  for(var sl=0;sl<36;sl+=3){ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(-W/2,-18+sl,W,1)}
+  // Text
+  ctx.font='bold 20px "Press Start 2P"';ctx.textAlign='center';ctx.textBaseline='middle';
+  var textColors={normal:'#ffd700',streak:'#ff6666',money:'#69f0ae',hype:'#ffd700',danger:'#ff5252',boss:'#e040fb'};
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.8)';
+  ctx.fillText(cp.text,2,2);
+  // Main text
+  ctx.fillStyle=textColors[cp.style]||'#ffd700';
+  ctx.fillText(cp.text,0,0);
+  // Glow
+  ctx.globalAlpha=alpha*0.4;
+  ctx.fillText(cp.text,0,0);
+  ctx.restore();
+}
+
+
+function startGame(){initAudio();score=0;lives=3;stage=1;
+  player={x:W/2,y:H-40,speed:6,shield:0,spread:0,rapid:0,rapidLv:0,spreadLv:0,shieldLv:0};
+  bullets=[];eBullets=[];particles=[];powerups=[];shootCD=0;invTimer=0;
+  megaBoss=null;bossLC=0;bossLF=0;activeCP=null;cpKillStreak=0;cpStreakTimer=0;cpLastScore=0;cpTimeSinceCP=0;
+  initBg();spawnEnemies();state='playing';hideOv();updateHUD();startBGM()}
+function nextStage(){bullets=[];eBullets=[];powerups=[];megaBoss=null;bossLC=0;bossLF=0;
+  player.x=W/2;player.y=H-40;spawnEnemies();state='playing';hideOv();updateHUD()}
+
+// ─── Input ──────────────────────
+var muted=false;
+document.addEventListener('keydown',function(e){keys[e.code]=true;
+  if(e.code==='KeyM'&&audioCtx){muted=!muted;bgmGain.gain.value=muted?0:0.25;sfxGain.gain.value=muted?0:0.35}
+  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();if(state==='start'||state==='over')startGame();else if(state==='playing')shoot()}});
+document.addEventListener('keyup',function(e){keys[e.code]=false});
+document.getElementById('ov-start').addEventListener('click',startGame);
+document.getElementById('ov-over').addEventListener('click',startGame);
+var ts={};document.querySelectorAll('.tbtn').forEach(function(b){
+  function s(e){e.preventDefault();ts[b.dataset.act]=true;if(b.dataset.act==='fire'&&(state==='start'||state==='over'))startGame()}
+  function d(e){e.preventDefault();ts[b.dataset.act]=false}
+  b.addEventListener('touchstart',s,{passive:false});b.addEventListener('touchend',d,{passive:false});
+  b.addEventListener('mousedown',s);b.addEventListener('mouseup',d)});
+var tickerCD=0;
+
+// ─── Main loop ──────────────────
+function loop(time){
+  if(lastTime===0)lastTime=time;var dt=Math.min(time-lastTime,50);lastTime=time;gT=time;
+  ctx.clearRect(0,0,W,H);drawBg();
+  tickerCD-=dt;if(tickerCD<=0){tickerCD=2000;updateTicker()}
+  if(state==='playing'){
+    var ml=keys['ArrowLeft']||keys['KeyA']||ts['left'],mr=keys['ArrowRight']||keys['KeyD']||ts['right'];
+    if(ml)player.x-=player.speed;if(mr)player.x+=player.speed;
+    player.x=Math.max(PW/2,Math.min(W-PW/2,player.x));
+    if(keys['Space']||keys['KeyZ']||ts['fire'])shoot();
+    if(shootCD>0)shootCD-=dt;if(player.rapid>0)player.rapid-=dt;if(invTimer>0)invTimer-=dt;
+    for(var i=bullets.length-1;i>=0;i--){bullets[i].y-=BSPD*market.playerSpeedMod;bullets[i].x+=(bullets[i].vx||0);
+      if(bullets[i].y<-10||bullets[i].x<-10||bullets[i].x>W+10){
+        if(Math.random()>.85&&bullets[i].y<-5){var mm=MISS_MSGS[Math.floor(Math.random()*MISS_MSGS.length)];
+          particles.push({x:bullets[i].x,y:20,vx:0,vy:.15,life:80,maxLife:80,text:mm,color:'#69f0ae',size:0,bbl:true})}
+        bullets.splice(i,1)}}
+    for(var i=eBullets.length-1;i>=0;i--){eBullets[i].y+=eBullets[i].vy;eBullets[i].x+=(eBullets[i].vx||0);
+      if(eBullets[i].y>H+10){if(Math.random()>.85){var ms=['빗나갔다!','다음엔..','치!','운 좋았어!'];
+          particles.push({x:eBullets[i].x,y:H-20,vx:0,vy:-.15,life:80,maxLife:80,text:ms[Math.floor(Math.random()*ms.length)],color:'#ff8a80',size:0,bbl:true})}
+        eBullets.splice(i,1)}}
+    for(var i=powerups.length-1;i>=0;i--){var pw=powerups[i];if(pw.y<H-30)pw.y+=pw.vy;pw.life--;if(pw.life<=0)powerups.splice(i,1)}
+    updateEnemies(dt);updateBoss(dt);updateMarket(dt);checkColl();checkBossHit();updateParts();checkCatchphrase(dt);
+    for(var i=0;i<powerups.length;i++)drawPow(powerups[i]);
+    drawBoss();
+    for(var i=0;i<enemies.length;i++){if(enemies[i].alive)drawEnemy(enemies[i])}
+    drawBullets();
+    var sa=invTimer>0?(Math.sin(gT*.02)>0?1:.2):1;
+    ctx.globalAlpha=.06;ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(player.x,player.y,PW,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+    drawPlayer(player.x,player.y,sa);
+    if(player.shield>0){ctx.strokeStyle='rgba(41,121,255,'+(0.3+Math.sin(gT*.005)*.2)+')';ctx.lineWidth=2;ctx.beginPath();ctx.arc(player.x,player.y,PW*.9,0,Math.PI*2);ctx.stroke();
+      ctx.font='8px "Press Start 2P"';ctx.textAlign='center';ctx.fillStyle='rgba(41,121,255,0.6)';ctx.fillText('🛡️x'+player.shield,player.x,player.y+PH+12);ctx.textAlign='start'}
+    drawParts();
+    drawCatchphrase();
+  }else if(state==='stageClear'){
+    stgTimer-=dt;
+    if(isBoss(stage)){var bd=getBD(stage);document.getElementById('stg-emoji').textContent=bd.emoji;
+      document.getElementById('stg-title').textContent='⚠️ 보스 시장 '+stage;document.getElementById('stg-sub').textContent=bd.name+' 출현!!!';}
+    else{var names=['개미의 시작','코인 시장','선물 거래소','나스닥 입성','월스트리트','암호화폐 거래소','파생상품 시장','글로벌 증시','다크풀','양자 트레이딩'];
+      var emojis=['📊','₿','📈','🗽','🏛️','⛓️','📉','🌍','🕶️','🤖'];
+      document.getElementById('stg-emoji').textContent=emojis[Math.min(stage-1,9)];
+      document.getElementById('stg-title').textContent='시장 '+stage;document.getElementById('stg-sub').textContent=names[Math.min(stage-1,names.length-1)]}
+    showOv('ov-stage');updateParts();drawParts();
+    if(stgTimer<=0)nextStage()}
+  requestAnimationFrame(loop)}
+initBg();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

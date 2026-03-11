@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>우주 세포 포식 게임</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at 20% 20%, #111827, #020617 55%, #000 100%);
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
+    canvas {
+      display: block;
+    }
+    .hud {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.38);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 12px 14px;
+      min-width: 220px;
+      backdrop-filter: blur(10px);
+      line-height: 1.45;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .hud .title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .hud .small {
+      opacity: 0.82;
+      font-size: 13px;
+    }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      background: rgba(0, 0, 0, 0.48);
+    }
+    .panel {
+      width: min(92vw, 560px);
+      padding: 28px;
+      border-radius: 22px;
+      background: rgba(5, 10, 25, 0.86);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
+      text-align: center;
+    }
+    .panel h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 42px);
+    }
+    .panel p {
+      margin: 8px 0;
+      color: rgba(255,255,255,0.88);
+      line-height: 1.65;
+    }
+    button {
+      margin-top: 16px;
+      border: 0;
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, #22c55e, #06b6d4);
+      color: white;
+      box-shadow: 0 10px 24px rgba(6,182,212,0.25);
+    }
+    .hidden { display: none; }
+    .footer-note {
+      margin-top: 12px;
+      font-size: 12px;
+      opacity: 0.72;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div class="hud">
+    <div class="title">우주 세포 포식 게임</div>
+    <div>질량: <span id="mass">0</span></div>
+    <div>점수: <span id="score">0</span></div>
+    <div>처치: <span id="eaten">0</span></div>
+    <div class="small">마우스를 따라 이동합니다. 작은 세포를 먹고, 큰 세포는 피하세요.</div>
+  </div>
+
+  <div id="startOverlay" class="overlay">
+    <div class="panel">
+      <h1>우주 세포 포식 게임</h1>
+      <p>광활한 우주 속에서 하나의 세포가 되어 살아남으세요.</p>
+      <p>자신보다 작은 세포를 흡수하면 점점 커지고, 더 큰 세포와 부딪히면 게임 오버입니다.</p>
+      <p>가끔 등장하는 빛나는 에너지를 먹으면 잠시 가속됩니다.</p>
+      <button id="startBtn">게임 시작</button>
+      <div class="footer-note">HTML 단일 파일로 제작된 간단한 아케이드 게임</div>
+    </div>
+  </div>
+
+  <div id="gameOverOverlay" class="overlay hidden">
+    <div class="panel">
+      <h1>게임 오버</h1>
+      <p id="gameOverText">더 큰 세포에게 흡수되었습니다.</p>
+      <button id="restartBtn">다시 시작</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    const massEl = document.getElementById('mass');
+    const scoreEl = document.getElementById('score');
+    const eatenEl = document.getElementById('eaten');
+    const startOverlay = document.getElementById('startOverlay');
+    const gameOverOverlay = document.getElementById('gameOverOverlay');
+    const gameOverText = document.getElementById('gameOverText');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let animationId = null;
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const pointer = { x: width / 2, y: height / 2 };
+    window.addEventListener('mousemove', (e) => {
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+    });
+    window.addEventListener('touchmove', (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      pointer.x = t.clientX;
+      pointer.y = t.clientY;
+    }, { passive: true });
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function dist(ax, ay, bx, by) {
+      return Math.hypot(ax - bx, ay - by);
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function randomColor(hueOffset = 0) {
+      const h = Math.floor((Math.random() * 360 + hueOffset) % 360);
+      return {
+        fill: `hsla(${h}, 85%, 62%, 0.88)`,
+        glow: `hsla(${h}, 100%, 70%, 0.32)`,
+        core: `hsla(${h}, 95%, 85%, 0.95)`
+      };
+    }
+
+    let stars = [];
+    let entities = [];
+    let particles = [];
+    let foods = [];
+    let player;
+    let score;
+    let eatenCount;
+    let gameOver;
+    let spawnTimer;
+    let foodTimer;
+    let speedBoostTimer;
+    let survivalTime;
+    let lastTime;
+
+    function createStars() {
+      stars = Array.from({ length: Math.max(120, Math.floor((width * height) / 9000)) }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        r: Math.random() * 1.7 + 0.3,
+        a: Math.random() * 0.8 + 0.2,
+        s: Math.random() * 0.25 + 0.05
+      }));
+    }
+
+    function createPlayer() {
+      const color = {
+        fill: 'hsla(195, 95%, 62%, 0.9)',
+        glow: 'hsla(195, 100%, 70%, 0.35)',
+        core: 'hsla(190, 100%, 92%, 0.95)'
+      };
+      return {
+        x: width / 2,
+        y: height / 2,
+        r: 20,
+        vx: 0,
+        vy: 0,
+        wobble: Math.random() * Math.PI * 2,
+        color,
+        boost: false
+      };
+    }
+
+    function spawnEnemy(forceSmaller = false) {
+      const safeRadius = Math.min(width, height) * 0.22 + player.r * 2.4;
+      let x, y, tries = 0;
+
+      do {
+        const side = Math.floor(Math.random() * 4);
+        if (side === 0) { x = rand(-60, width + 60); y = -50; }
+        else if (side === 1) { x = width + 50; y = rand(-60, height + 60); }
+        else if (side === 2) { x = rand(-60, width + 60); y = height + 50; }
+        else { x = -50; y = rand(-60, height + 60); }
+        tries += 1;
+      } while (dist(x, y, player.x, player.y) < safeRadius && tries < 16);
+
+      const earlyGame = survivalTime < 18;
+      const smallerChance = forceSmaller
+        ? 1
+        : earlyGame
+          ? 0.9
+          : survivalTime < 35
+            ? 0.75
+            : 0.6;
+
+      const isSmaller = Math.random() < smallerChance;
+      const radius = isSmaller
+        ? rand(Math.max(6, player.r * 0.28), Math.max(10, player.r * 0.88))
+        : earlyGame
+          ? rand(player.r * 1.02, player.r * 1.22)
+          : rand(player.r * 1.05, player.r * 1.9 + 10);
+
+      const angleToCenter = Math.atan2(player.y - y, player.x - x) + rand(-0.45, 0.45);
+      const speedBase = clamp(90 / radius, 0.4, earlyGame ? 1.5 : 2.1);
+      const speed = rand(speedBase * 0.75, speedBase * 1.15);
+      const color = randomColor(isSmaller ? 60 : 320);
+
+      entities.push({
+        x,
+        y,
+        r: radius,
+        vx: Math.cos(angleToCenter) * speed,
+        vy: Math.sin(angleToCenter) * speed,
+        wobble: Math.random() * Math.PI * 2,
+        color,
+        aiShift: rand(-0.45, 0.45)
+      });
+    }
+
+    function spawnFood() {
+      foods.push({
+        x: rand(30, width - 30),
+        y: rand(30, height - 30),
+        // larger bonus cell so it gives noticeable mass
+        r: rand(10, 16),
+        pulse: Math.random() * Math.PI * 2
+      });
+    }
+
+    function burst(x, y, color, count, speedScale) {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = Math.random() * speedScale + 0.4;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(a) * s,
+          vy: Math.sin(a) * s,
+          life: rand(20, 40),
+          maxLife: 40,
+          size: rand(1.5, 4),
+          color
+        });
+      }
+    }
+
+    function resetGame() {
+      createStars();
+      entities = [];
+      particles = [];
+      foods = [];
+      player = createPlayer();
+      score = 0;
+      eatenCount = 0;
+      gameOver = false;
+      spawnTimer = 0;
+      foodTimer = 0;
+      speedBoostTimer = 0;
+      survivalTime = 0;
+      lastTime = performance.now();
+      pointer.x = width / 2;
+      pointer.y = height / 2;
+
+      for (let i = 0; i < 12; i++) spawnEnemy(true);
+      for (let i = 0; i < 6; i++) spawnFood();
+      updateHud();
+    }
+
+    function updateHud() {
+      massEl.textContent = Math.round(player.r * player.r);
+      scoreEl.textContent = Math.floor(score);
+      eatenEl.textContent = eatenCount;
+    }
+
+    function update(dt) {
+      if (gameOver) return;
+
+      spawnTimer += dt;
+      foodTimer += dt;
+      survivalTime += dt / 60;
+      if (speedBoostTimer > 0) speedBoostTimer -= dt;
+      player.boost = speedBoostTimer > 0;
+
+      const dx = pointer.x - player.x;
+      const dy = pointer.y - player.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const maxSpeed = player.boost ? 4.6 : 3.2;
+      const accel = player.boost ? 0.18 : 0.12;
+      const targetVx = (dx / d) * Math.min(maxSpeed, d / 18);
+      const targetVy = (dy / d) * Math.min(maxSpeed, d / 18);
+      player.vx += (targetVx - player.vx) * accel;
+      player.vy += (targetVy - player.vy) * accel;
+      player.x += player.vx;
+      player.y += player.vy;
+      player.x = clamp(player.x, player.r, width - player.r);
+      player.y = clamp(player.y, player.r, height - player.r);
+      player.wobble += 0.05;
+
+      const spawnInterval = survivalTime < 15
+        ? 1.55
+        : survivalTime < 30
+          ? 1.2
+          : clamp(1.05 - player.r * 0.008, 0.24, 1.05);
+      if (spawnTimer >= spawnInterval) {
+        spawnTimer = 0;
+        spawnEnemy(false);
+      }
+      if (foodTimer >= 4.5 && foods.length < 4) {
+        foodTimer = 0;
+        spawnFood();
+      }
+
+      for (let i = entities.length - 1; i >= 0; i--) {
+        const e = entities[i];
+        const angle = Math.atan2(player.y - e.y, player.x - e.x);
+        const flee = e.r < player.r * 0.92;
+        const steer = flee ? angle + Math.PI : angle;
+        const speedFactor = clamp(85 / e.r, 0.42, 2.2);
+
+        e.vx += Math.cos(steer + e.aiShift) * 0.015 * speedFactor;
+        e.vy += Math.sin(steer + e.aiShift) * 0.015 * speedFactor;
+        e.vx *= 0.995;
+        e.vy *= 0.995;
+        e.x += e.vx;
+        e.y += e.vy;
+        e.wobble += 0.04;
+
+        if (e.x < -120 || e.x > width + 120 || e.y < -120 || e.y > height + 120) {
+          entities.splice(i, 1);
+          continue;
+        }
+
+        const hit = dist(player.x, player.y, e.x, e.y) < player.r + e.r * 0.9;
+        if (hit) {
+          if (player.r >= e.r * 1.05) {
+            score += Math.round(e.r * 12);
+            eatenCount += 1;
+            // increase growth from eaten cell (more noticeable mass gain)
+            // grow based on area absorption so growth feels fair compared to enemy size
+            const playerArea = player.r * player.r;
+            const enemyArea = e.r * e.r;
+            const absorbFactor = 0.65; // how much of enemy mass converts to player
+            const newArea = playerArea + enemyArea * absorbFactor;
+            player.r = Math.sqrt(newArea);
+            burst(e.x, e.y, e.color.fill, Math.floor(e.r * 1.8), 2.8);
+            entities.splice(i, 1);
+            updateHud();
+            continue;
+          } else if (e.r >= player.r * 1.02) {
+            burst(player.x, player.y, player.color.fill, 36, 3.4);
+            endGame('더 큰 세포에게 흡수되었습니다.');
+            return;
+          }
+        }
+      }
+
+      for (let i = foods.length - 1; i >= 0; i--) {
+        const f = foods[i];
+        f.pulse += 0.08;
+        if (dist(player.x, player.y, f.x, f.y) < player.r + f.r) {
+          speedBoostTimer = 3.8;
+          score += 75;
+
+          // bonus cells also add mass
+          const playerArea = player.r * player.r;
+          const foodArea = f.r * f.r;
+          const newArea = playerArea + foodArea * 0.9;
+          player.r = Math.sqrt(newArea);
+
+          burst(f.x, f.y, 'hsla(52, 100%, 70%, 0.95)', 18, 3.6);
+          foods.splice(i, 1);
+          updateHud();
+        }
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.985;
+        p.vy *= 0.985;
+        p.life -= 1;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+
+      score += dt * (0.7 + player.r * 0.02);
+      updateHud();
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, width, height);
+      const g = ctx.createRadialGradient(width * 0.5, height * 0.45, 40, width * 0.5, height * 0.45, Math.max(width, height) * 0.75);
+      g.addColorStop(0, 'rgba(15,23,42,0.25)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, width, height);
+
+      for (const s of stars) {
+        ctx.globalAlpha = s.a;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        s.y += s.s;
+        if (s.y > height + 2) {
+          s.y = -2;
+          s.x = Math.random() * width;
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawCell(c, isPlayer = false) {
+      const pulse = Math.sin(c.wobble) * 0.08 + 1;
+      const rx = c.r * (1.05 + (isPlayer ? 0.02 : 0));
+      const ry = c.r * 0.92 * pulse;
+
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(Math.atan2(c.vy, c.vx) * 0.2);
+
+      ctx.shadowBlur = isPlayer ? 32 : 20;
+      ctx.shadowColor = c.color.glow;
+      ctx.fillStyle = c.color.fill;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      const core = ctx.createRadialGradient(-c.r * 0.2, -c.r * 0.25, c.r * 0.08, 0, 0, c.r);
+      core.addColorStop(0, c.color.core);
+      core.addColorStop(1, 'rgba(255,255,255,0.05)');
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.ellipse(-c.r * 0.08, -c.r * 0.02, c.r * 0.5, c.r * 0.42, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.ellipse(-c.r * 0.32, -c.r * 0.34, c.r * 0.23, c.r * 0.12, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (isPlayer && c.boost) {
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, c.r + 8 + Math.sin(c.wobble * 2) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawFood(f) {
+      const rr = f.r + Math.sin(f.pulse) * 1.3;
+      ctx.save();
+      ctx.shadowBlur = 24;
+      ctx.shadowColor = 'rgba(250, 204, 21, 0.8)';
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.92)';
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, rr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.beginPath();
+      ctx.arc(f.x - rr * 0.25, f.y - rr * 0.25, rr * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      for (const p of particles) {
+        ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function render() {
+      drawBackground();
+      for (const f of foods) drawFood(f);
+      for (const e of entities) drawCell(e, false);
+      drawCell(player, true);
+      drawParticles();
+    }
+
+    function endGame(message) {
+      gameOver = true;
+      gameOverText.textContent = `${message} 최종 점수: ${Math.floor(score)}`;
+      gameOverOverlay.classList.remove('hidden');
+    }
+
+    function loop(now) {
+      const dt = Math.min(1.2, (now - lastTime) / 16.666);
+      lastTime = now;
+      update(dt);
+      render();
+      animationId = requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      cancelAnimationFrame(animationId);
+      startOverlay.classList.add('hidden');
+      gameOverOverlay.classList.add('hidden');
+      resetGame();
+      animationId = requestAnimationFrame(loop);
+    }
+
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+
+    createStars();
+    player = createPlayer();
+    render();
+  </script>
+</body>
+</html>
